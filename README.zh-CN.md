@@ -275,4 +275,4 @@ TV_HOST=192.168.1.50 tools/restore.sh "examples/你的机型/debloat.txt" com.go
 
 ## 许可证
 
-项目采用 [MIT 许可证](LICENSE)。Outfit 字体采用 [SIL Open Font License](launcher/FONT-LICENSE-OFL.txt)。
+项目采用 [MIT 许可证](LICENSE)。Inter 字体采用 [SIL Open Font License](launcher/FONT-LICENSE-OFL.txt)。
