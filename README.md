@@ -249,6 +249,7 @@ tools/theme.sh themes/aurora                                 # push a theme; --r
 | [`tools/recovery.py`](tools/recovery.py) | Writes the record `disable.sh` needs to undo itself, and prints the restore batch. |
 | [`tools/theme.sh`](tools/theme.sh) | Push a folder from [`themes/`](themes/) to the launcher and restart Home. |
 | [`tools/race_calendar.py`](tools/race_calendar.py) | Writes this season's F1 calendar into a theme for race-weekend mode, from the free Jolpica API. |
+| [`tools/sony-remote.py`](tools/sony-remote.py) | A remote for Sony BRAVIA TVs in the browser, over Sony's IP control with a Pre-Shared Key: D-pad, OK, Back, Home, Settings, volume and one button per HDMI input. Needs no ADB, so it keeps working after debugging is switched off. |
 | [`launcher/build-and-install.sh`](launcher/build-and-install.sh) | Builds a shrunk release (about 390 KB), installs it, switches Home, and rolls back if Home does not land on it. |
 
 Debloat list paths passed to `disable.sh` and `restore.sh` are relative to the directory you run
