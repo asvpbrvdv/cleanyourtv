@@ -1,4 +1,4 @@
-"""tools/sony-remote.py against a fake BRAVIA on 127.0.0.1: button codes, inputs, key and guards.
+"""tools/sony-remote.py against a fake BRAVIA on 127.0.0.1: button codes, inputs, power, mute, key and guards.
 
 Run from the repository root: python3 -m unittest discover -s tests -v
 """
@@ -20,11 +20,15 @@ spec.loader.exec_module(remote)
 PSK = "0000"
 SETTINGS_CODE = "TV-OWN-ACTIONMENU"
 INPUTS = [{"uri": "extInput:hdmi?port=1", "title": "HDMI 1", "label": "Apple TV", "connection": True},
-          {"uri": "extInput:hdmi?port=2", "title": "HDMI 2", "label": "", "connection": False}]
+          {"uri": "extInput:hdmi?port=2", "title": "HDMI 2", "label": "", "connection": False},
+          {"uri": "extInput:cec?type=audiosystem&port=3&logicalAddr=5", "title": "Sonos Beam",
+           "label": "", "connection": True}]
 
 
 class FakeTv(BaseHTTPRequestHandler):
     sent = []
+    power = "active"
+    mute = False
 
     def log_message(self, *args):
         pass
@@ -53,6 +57,13 @@ class FakeTv(BaseHTTPRequestHandler):
         elif call["method"] == "setPlayContent":
             self.sent.append(call["params"][0]["uri"])
             result = []
+        elif call["method"] == "getPowerStatus":
+            result = [{"status": FakeTv.power}]
+        elif call["method"] == "setPowerStatus":
+            FakeTv.power = "active" if call["params"][0]["status"] else "standby"
+            result = []
+        elif call["method"] == "getVolumeInformation":
+            result = [[{"target": "speaker", "volume": 12, "mute": FakeTv.mute}]]
         else:
             return self.answer(200, json.dumps({"error": [12, "No Such Method"], "id": 1}).encode())
         self.answer(200, json.dumps({"result": result, "id": 1}).encode())
@@ -65,10 +76,11 @@ def serve(server):
 
 class SonyRemoteTest(unittest.TestCase):
     def setUp(self):
-        FakeTv.sent = []
+        FakeTv.sent, FakeTv.power, FakeTv.mute = [], "active", False
         self.tv_server = serve(ThreadingHTTPServer(("127.0.0.1", 0), FakeTv))
         self.tv = remote.Tv(f"127.0.0.1:{self.tv_server.server_address[1]}", PSK)
-        self.page = serve(ThreadingHTTPServer(("127.0.0.1", 0), remote.make_handler(self.tv, lan=False)))
+        self.page = serve(ThreadingHTTPServer(("127.0.0.1", 0),
+                                              remote.make_handler(self.tv, lan=False, command="cd ~/x && <run>")))
         self.url = f"http://127.0.0.1:{self.page.server_address[1]}"
 
     def tearDown(self):
@@ -91,6 +103,18 @@ class SonyRemoteTest(unittest.TestCase):
         status, body = self.request("/")
         self.assertEqual(status, 200)
         self.assertIn("TV Remote", body)
+        self.assertIn("<code>cd ~/x &amp;&amp; &lt;run&gt;</code>", body)
+
+    def test_power_toggles(self):
+        self.assertEqual(self.press("/key/power")[0], 204)
+        self.assertEqual(FakeTv.power, "standby")
+        self.assertEqual(self.press("/key/power")[0], 204)
+        self.assertEqual(FakeTv.power, "active")
+
+    def test_mute_state(self):
+        self.assertEqual(json.loads(self.request("/state")[1]), {"muted": False})
+        FakeTv.mute = True
+        self.assertEqual(json.loads(self.request("/state")[1]), {"muted": True})
 
     def test_keys_use_the_tvs_codes_then_the_fallback(self):
         self.assertEqual(self.press("/key/settings")[0], 204)
@@ -122,6 +146,14 @@ class SonyRemoteTest(unittest.TestCase):
         self.assertEqual(self.request("/", headers={"Host": "evil.example"})[0], 403)
         self.assertEqual(self.press("/key/poweroff")[0], 404)
         self.assertEqual(FakeTv.sent, [])
+
+
+    def test_start_command(self):
+        args = type("Args", (), {"lan": True, "port": 9000})()
+        command = remote.start_command("192.168.1.210", "0000", args)
+        self.assertTrue(command.startswith("cd "))
+        self.assertTrue(command.endswith(" && TV_HOST=192.168.1.210 TV_PSK=0000 "
+                                         "python3 tools/sony-remote.py --lan --port 9000"))
 
 
 if __name__ == "__main__":

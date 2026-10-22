@@ -8,17 +8,19 @@ On the TV, once: Settings > Network & Internet > Home network > IP control. Set 
     ... python3 tools/sony-remote.py --lan                                  also serve phones on the Wi-Fi
     ... python3 tools/sony-remote.py --port 9000 --no-browser
 
-Keys: arrows, Enter = OK, Esc or Backspace = Back, H = Home, S = Settings, I = Input, + / - = volume,
-M = mute. Python 3 standard library only. The button codes come from the TV itself
-(getRemoteControllerInfo), with Sony's published codes as a fallback, and the input list from
-getCurrentExternalInputsStatus, so each HDMI port gets its own button.
+Keys: arrows, Enter = OK, Esc or Backspace = Back, H = Home, S = Settings, + / - = volume, M = mute.
+Python 3 standard library only. The button codes come from the TV itself (getRemoteControllerInfo),
+with Sony's published codes as a fallback, and the input list from getCurrentExternalInputsStatus,
+so each HDMI port gets its own button. Power and the mute icon use the system and audio services.
 
 The page only answers on 127.0.0.1 unless --lan is given: anyone who can reach it can press buttons
 on the TV without knowing the key.
 """
 import argparse
+import html
 import json
 import os
+import shlex
 import sys
 import urllib.error
 import urllib.parse
@@ -38,7 +40,7 @@ FALLBACK_CODES = {
     "Return": "AAAAAgAAAJcAAAAjAw==",
     "Home": "AAAAAQAAAAEAAABgAw==",
     "ActionMenu": "AAAAAgAAAMQAAABLAw==",
-    "Input": "AAAAAQAAAAEAAAAlAw==",
+    "TvPower": "AAAAAQAAAAEAAAAVAw==",
     "VolumeUp": "AAAAAQAAAAEAAAASAw==",
     "VolumeDown": "AAAAAQAAAAEAAAATAw==",
     "Mute": "AAAAAQAAAAEAAAAUAw==",
@@ -49,8 +51,8 @@ FALLBACK_CODES = {
 BUTTONS = {
     "up": ["Up"], "down": ["Down"], "left": ["Left"], "right": ["Right"],
     "ok": ["Confirm"], "back": ["Return"], "home": ["Home"],
-    "settings": ["ActionMenu", "Options"], "input": ["Input"],
-    "volup": ["VolumeUp"], "voldown": ["VolumeDown"], "mute": ["Mute"],
+    "settings": ["ActionMenu", "Options"],
+    "volup": ["VolumeUp"], "voldown": ["VolumeDown"], "mute": ["Mute"], "power": ["TvPower", "Power"],
 }
 
 IRCC_BODY = ('<?xml version="1.0"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" '
@@ -109,8 +111,25 @@ class Tv:
         except RuntimeError:
             result = self.call("avContent", "getCurrentExternalInputsStatus")
         items = result[0] if result else []
+        # HDMI-CEC devices (a soundbar, a player) are listed again as extInput:cec entries next to
+        # their HDMI port, and choosing those does not switch: the port's own button does.
         return [{"uri": i["uri"], "name": i.get("label") or i.get("title") or i["uri"],
-                 "connected": bool(i.get("connection"))} for i in items if i.get("uri")]
+                 "connected": bool(i.get("connection"))}
+                for i in items if i.get("uri") and not i["uri"].startswith("extInput:cec")]
+
+    def power(self):
+        """Standby when on, on when in standby; IRCC TvPower where the TV won't take setPowerStatus."""
+        try:
+            on = self.call("system", "getPowerStatus")[0].get("status") == "active"
+            self.call("system", "setPowerStatus", [{"status": not on}])
+        except RuntimeError:
+            self.press("power")
+
+    def muted(self):
+        """True or False from the TV's volume information, None when it reports no mute state."""
+        result = self.call("audio", "getVolumeInformation")
+        states = [v["mute"] for v in (result[0] if result else []) if isinstance(v.get("mute"), bool)]
+        return any(states) if states else None
 
     def switch(self, uri):
         if not uri.startswith("extInput:"):
@@ -123,7 +142,8 @@ PAGE = """<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TV Remote</title>
 <style>
-:root{--bg:#0b0c0f;--pad:#1a1c22;--key:#262931;--key-hi:#353945;--text:#eef0f4;--dim:#8a8f9c;--accent:#cfffcf}
+:root{--bg:#0b0c0f;--pad:#1a1c22;--key:#262931;--key-hi:#353945;--text:#eef0f4;--dim:#8a8f9c;--accent:#cfffcf;
+ --red:#e5484d;--red-hi:#f2555a}
 *{box-sizing:border-box}
 body{margin:0;min-height:100vh;display:flex;justify-content:center;align-items:flex-start;
  background:var(--bg);color:var(--text);font:15px/1.3 -apple-system,BlinkMacSystemFont,"Inter",sans-serif}
@@ -142,17 +162,30 @@ h2{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
 #inputs button.off{color:var(--dim)}
 #status{min-height:1.3em;font-size:13px;color:var(--dim);text-align:center;margin-top:14px}
 #status.err{color:#ff8a8a}
+svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle}
+button.power{flex:0 0 44px;height:44px;padding:0;border-radius:50%;background:var(--red);color:#fff}
+button.power:hover{background:var(--red-hi)}
+button.mute.on{background:var(--red);color:#fff}
+button.mute.on:hover{background:var(--red-hi)}
+#copy{display:block;width:100%;margin:22px 0 0;padding:12px;text-align:left;background:none;
+ border:1px solid var(--key);color:var(--dim)}
+#copy:hover{background:var(--pad)}
+#copy .label{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;letter-spacing:.04em;margin-bottom:6px}
+#copy .label svg{width:15px;height:15px}
+#copy code{display:block;font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;overflow-wrap:anywhere;opacity:.85}
 </style></head><body><main>
-<div class="row"><button data-k="input">Input</button><button data-k="home">Home</button><button data-k="settings">Settings</button></div>
+<div class="row"><button class="power" data-k="power" aria-label="Power"><svg viewBox="0 0 24 24"><path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77.04"/></svg></button><button data-k="home">Home</button><button data-k="settings">Settings</button></div>
 <div class="pad">
  <span></span><button data-k="up" aria-label="Up">&#9650;</button><span></span>
  <button data-k="left" aria-label="Left">&#9664;</button><button class="ok" data-k="ok">OK</button><button data-k="right" aria-label="Right">&#9654;</button>
  <span></span><button data-k="down" aria-label="Down">&#9660;</button><span></span>
 </div>
 <div class="row"><button data-k="back">Back</button></div>
-<div class="row"><button data-k="voldown" aria-label="Volume down">Vol &minus;</button><button data-k="mute">Mute</button><button data-k="volup" aria-label="Volume up">Vol +</button></div>
+<div class="row"><button data-k="voldown" aria-label="Volume down">Vol &minus;</button><button class="mute" data-k="mute" aria-label="Mute"></button><button data-k="volup" aria-label="Volume up">Vol +</button></div>
 <h2>Inputs</h2><div id="inputs"><span style="color:var(--dim)">Loading&hellip;</span></div>
 <div id="status"></div>
+<button id="copy" title="Click to copy"><span class="label">Copy and paste into Terminal<svg viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg></span>
+<code>__COMMAND__</code></button>
 </main><script>
 const status = document.getElementById("status");
 function say(text, err) { status.textContent = text; status.className = err ? "err" : ""; }
@@ -162,10 +195,36 @@ async function post(path) {
     if (!r.ok) say(await r.text(), true); else say("");
   } catch (e) { say("The remote stopped. Start it again in Terminal.", true); }
 }
-const press = k => post("/key/" + k);
+const SOUND = '<svg viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>';
+const MUTED = '<svg viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="m22 9-6 6"/><path d="m16 9 6 6"/></svg>';
+const muteBtn = document.querySelector("button.mute");
+function showMute(on) {
+  muteBtn.innerHTML = on ? MUTED : SOUND; muteBtn.classList.toggle("on", on);
+  muteBtn.setAttribute("aria-label", on ? "Unmute" : "Mute");
+}
+let muted = false; showMute(false);
+// The TV's own answer wins; a TV that reports no mute state keeps the icon's own guess.
+async function syncMute() {
+  try { const r = await fetch("/state"); const s = await r.json(); if (s.muted !== null) showMute(muted = s.muted); } catch (e) {}
+}
+async function press(k) {
+  if (k === "mute") showMute(muted = !muted);
+  await post("/key/" + k);
+  if (k === "mute" || k === "volup" || k === "voldown") setTimeout(syncMute, 400);
+}
+syncMute(); window.addEventListener("focus", syncMute);
+const copy = document.getElementById("copy"), label = copy.querySelector(".label").firstChild;
+copy.addEventListener("click", async () => {
+  const text = copy.querySelector("code").textContent;
+  try { await navigator.clipboard.writeText(text); } catch (e) {
+    const t = document.createElement("textarea"); t.value = text; document.body.appendChild(t);
+    t.select(); document.execCommand("copy"); t.remove();
+  }
+  label.textContent = "Copied"; setTimeout(() => label.textContent = "Copy and paste into Terminal", 1500);
+});
 document.querySelectorAll("[data-k]").forEach(b => b.addEventListener("click", () => press(b.dataset.k)));
 const keys = {ArrowUp:"up", ArrowDown:"down", ArrowLeft:"left", ArrowRight:"right", Enter:"ok",
-  Escape:"back", Backspace:"back", h:"home", s:"settings", i:"input", "+":"volup", "=":"volup",
+  Escape:"back", Backspace:"back", h:"home", s:"settings", "+":"volup", "=":"volup",
   "-":"voldown", m:"mute"};
 document.addEventListener("keydown", e => {
   const k = keys[e.key] || keys[e.key.toLowerCase()];
@@ -188,7 +247,7 @@ fetch("/inputs").then(async r => {
 """
 
 
-def make_handler(tv, lan):
+def make_handler(tv, lan, command=""):
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *args):
             pass
@@ -221,7 +280,12 @@ def make_handler(tv, lan):
             if not self.allowed():
                 return self.reply(403, "Forbidden")
             if self.path == "/":
-                return self.reply(200, PAGE, "text/html; charset=utf-8")
+                return self.reply(200, PAGE.replace("__COMMAND__", html.escape(command)), "text/html; charset=utf-8")
+            if self.path == "/state":
+                try:
+                    return self.reply(200, json.dumps({"muted": tv.muted()}), "application/json")
+                except Exception:
+                    return self.reply(200, json.dumps({"muted": None}), "application/json")
             if self.path == "/inputs":
                 try:
                     return self.reply(200, json.dumps(tv.inputs()), "application/json")
@@ -233,7 +297,9 @@ def make_handler(tv, lan):
             if not self.allowed() or self.headers.get("X-Remote") != "1":
                 return self.reply(403, "Forbidden")
             try:
-                if self.path.startswith("/key/") and self.path[5:] in BUTTONS:
+                if self.path == "/key/power":
+                    tv.power()
+                elif self.path.startswith("/key/") and self.path[5:] in BUTTONS:
                     tv.press(self.path[5:])
                 elif self.path.startswith("/input?uri="):
                     tv.switch(urllib.parse.unquote(self.path[len("/input?uri="):]))
@@ -244,6 +310,19 @@ def make_handler(tv, lan):
             self.reply(204, "")
 
     return Handler
+
+
+def start_command(host, psk, args):
+    """The line that starts this remote again, shown on the page to copy."""
+    repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    home = os.path.expanduser("~")
+    if repo.startswith(home + os.sep):
+        repo = "~/" + shlex.quote(repo[len(home) + 1:])
+    else:
+        repo = shlex.quote(repo)
+    flags = (" --lan" if args.lan else "") + (f" --port {args.port}" if args.port != 8765 else "")
+    return (f"cd {repo} && TV_HOST={shlex.quote(host)} TV_PSK={shlex.quote(psk)} "
+            f"python3 tools/sony-remote.py{flags}")
 
 
 def main():
@@ -257,7 +336,8 @@ def main():
         sys.exit("Set TV_HOST and TV_PSK, e.g.  TV_HOST=192.168.1.50 TV_PSK=<key> python3 tools/sony-remote.py\n"
                  "(the key is the TV's Settings > Network & Internet > Home network > IP control > Pre-Shared Key)")
     tv = Tv(host, psk)
-    server = ThreadingHTTPServer(("0.0.0.0" if args.lan else "127.0.0.1", args.port), make_handler(tv, args.lan))
+    server = ThreadingHTTPServer(("0.0.0.0" if args.lan else "127.0.0.1", args.port),
+                                 make_handler(tv, args.lan, start_command(host, psk, args)))
     url = f"http://127.0.0.1:{server.server_address[1]}"
     print(f"Remote for {host} at {url}" + ("  (and on this computer's IP from your phone)" if args.lan else ""))
     print("Ctrl+C to stop.")
