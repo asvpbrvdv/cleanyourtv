@@ -176,8 +176,10 @@ PAGE = """<!doctype html>
 *{box-sizing:border-box}
 body{margin:0;min-height:100vh;display:flex;justify-content:center;align-items:flex-start;
  background:var(--bg);color:var(--text);font:15px/1.3 -apple-system,BlinkMacSystemFont,"Inter",sans-serif}
-.app{display:flex;gap:28px;align-items:flex-start;justify-content:center;padding:20px 16px;width:100%}
-main{width:100%;max-width:268px;flex:0 1 268px}
+/* The remote sits in the centre column whether or not the keyboard is open, so the keyboard button
+   never moves: the keyboard fills the empty column to its left, or goes below it on narrow screens. */
+.app{display:grid;grid-template-columns:1fr minmax(0,268px) 1fr;align-items:start;padding:20px 16px;width:100%}
+main{grid-column:2;grid-row:1;width:100%}
 .row{display:flex;gap:10px;justify-content:center;margin:10px 0}
 button{appearance:none;border:0;border-radius:14px;background:var(--key);color:var(--text);
  font:inherit;padding:12px 0;flex:1;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent}
@@ -206,7 +208,7 @@ button.mute.on:hover{background:var(--red-hi)}
 #copy .label svg{width:15px;height:15px}
 #copy code{display:block;font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;overflow-wrap:anywhere;opacity:.85}
 /* phone-style keyboard */
-#keyboard{flex:0 1 320px;max-width:320px;margin-top:10px}
+#keyboard{grid-column:1;grid-row:1;justify-self:end;width:100%;max-width:348px;padding-right:28px;margin-top:10px}
 #keyboard[hidden]{display:none}
 .field{display:flex;align-items:center;gap:8px;background:var(--pad);border-radius:12px;padding:10px 12px;min-height:44px}
 .field .dot{flex:0 0 8px;height:8px;border-radius:50%;background:var(--dim)}
@@ -223,7 +225,7 @@ button.mute.on:hover{background:var(--red-hi)}
 .krow button.mod.on{background:var(--text);color:var(--bg)}
 .krow.home{padding:0 5%}
 .hint{font-size:12px;color:var(--dim);margin:8px 2px 0;line-height:1.45}
-@media (max-width:640px){.app{flex-direction:column;align-items:center}#keyboard{width:100%;max-width:340px}}
+@media (max-width:900px){#keyboard{grid-column:1/-1;grid-row:2;justify-self:center;max-width:340px;padding-right:0;margin-top:24px}}
 </style></head><body><div class="app">
 <section id="keyboard" hidden aria-label="Keyboard">
  <div class="field idle" id="field"><span class="dot"></span><span id="typed"></span></div>
