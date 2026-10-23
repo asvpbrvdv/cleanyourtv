@@ -29,6 +29,7 @@ class FakeTv(BaseHTTPRequestHandler):
     sent = []
     power = "active"
     mute = False
+    field = None  # text in the TV's open keyboard field; None when no field is open
 
     def log_message(self, *args):
         pass
@@ -62,6 +63,14 @@ class FakeTv(BaseHTTPRequestHandler):
         elif call["method"] == "setPowerStatus":
             FakeTv.power = "active" if call["params"][0]["status"] else "standby"
             result = []
+        elif call["method"] in ("getTextForm", "setTextForm"):
+            if FakeTv.field is None:
+                return self.answer(200, json.dumps({"error": [7, "Illegal State"], "id": 1}).encode())
+            if call["method"] == "setTextForm":
+                FakeTv.field = call["params"][0]
+                result = [0]
+            else:
+                result = [{"text": FakeTv.field}]
         elif call["method"] == "getVolumeInformation":
             result = [[{"target": "speaker", "volume": 12, "mute": FakeTv.mute}]]
         else:
@@ -76,7 +85,7 @@ def serve(server):
 
 class SonyRemoteTest(unittest.TestCase):
     def setUp(self):
-        FakeTv.sent, FakeTv.power, FakeTv.mute = [], "active", False
+        FakeTv.sent, FakeTv.power, FakeTv.mute, FakeTv.field = [], "active", False, None
         self.tv_server = serve(ThreadingHTTPServer(("127.0.0.1", 0), FakeTv))
         self.tv = remote.Tv(f"127.0.0.1:{self.tv_server.server_address[1]}", PSK)
         self.page = serve(ThreadingHTTPServer(("127.0.0.1", 0),
@@ -96,8 +105,13 @@ class SonyRemoteTest(unittest.TestCase):
         except urllib.error.HTTPError as e:
             return e.code, e.read().decode()
 
-    def press(self, path):
-        return self.request(path, "POST", {"X-Remote": "1"})
+    def press(self, path, body=None):
+        req = urllib.request.Request(self.url + path, data=body, method="POST", headers={"X-Remote": "1"})
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                return resp.status, resp.read().decode()
+        except urllib.error.HTTPError as e:
+            return e.code, e.read().decode()
 
     def test_page(self):
         status, body = self.request("/")
@@ -147,6 +161,17 @@ class SonyRemoteTest(unittest.TestCase):
         self.assertEqual(self.press("/key/poweroff")[0], 404)
         self.assertEqual(FakeTv.sent, [])
 
+
+    def test_typing(self):
+        self.assertEqual(json.loads(self.request("/text")[1]), {"active": False, "text": None})
+        status, body = self.press("/text", json.dumps({"text": "dune"}).encode())
+        self.assertEqual(status, 502)
+        self.assertIn("No text field is open", body)
+        FakeTv.field = "du"
+        self.assertEqual(json.loads(self.request("/text")[1]), {"active": True, "text": "du"})
+        self.assertEqual(self.press("/text", json.dumps({"text": "dune"}).encode())[0], 204)
+        self.assertEqual(FakeTv.field, "dune")
+        self.assertEqual(self.press("/text", b'{"text": 5}')[0], 400)
 
     def test_start_command(self):
         args = type("Args", (), {"lan": True, "port": 9000})()
