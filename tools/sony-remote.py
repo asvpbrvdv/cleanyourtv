@@ -7,6 +7,7 @@ On the TV, once: Settings > Network & Internet > Home network > IP control. Set 
     TV_HOST=192.168.1.50 TV_PSK=<key> python3 tools/sony-remote.py         opens http://127.0.0.1:8765
     ... python3 tools/sony-remote.py --lan                                  also serve phones on the Wi-Fi
     ... python3 tools/sony-remote.py --port 9000 --no-browser
+    ... python3 tools/sony-remote.py --make-app                             Mac: ~/Applications/TV Remote.app
 
 Keys: arrows, Enter = OK, Esc or Backspace = Back, H = Home, S = Settings, + / - = volume, M = mute.
 The keyboard button turns those letters into typing: what you type goes into the search or text field
@@ -15,6 +16,9 @@ Python 3 standard library only. The button codes come from the TV itself (getRem
 with Sony's published codes as a fallback, and the input list from getCurrentExternalInputsStatus,
 so each HDMI port gets its own button. Power and the mute icon use the system and audio services.
 
+--make-app writes a one-click Mac app with these settings: it reopens the page when the remote is
+running and starts it in the background when it isn't, so closing the tab or Terminal costs nothing.
+
 The page only answers on 127.0.0.1 unless --lan is given: anyone who can reach it can press buttons
 on the TV without knowing the key.
 """
@@ -22,12 +26,17 @@ import argparse
 import html
 import json
 import os
+import plistlib
 import shlex
+import shutil
+import struct
+import subprocess
 import sys
 import urllib.error
 import urllib.parse
 import urllib.request
 import webbrowser
+import zlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 TIMEOUT_S = 4.0
@@ -495,16 +504,114 @@ def start_command(host, psk, args):
             f"python3 tools/sony-remote.py{flags}")
 
 
+APP_ID = "tv.cleanyour.remote"
+
+APP_SCRIPT = """#!/bin/bash
+# Made by tools/sony-remote.py --make-app. Opens the remote, starting it first when it isn't running.
+url=http://127.0.0.1:{port}/
+if /usr/bin/curl -fs -o /dev/null -m 1 "$url"; then exec /usr/bin/open "$url"; fi
+log="$HOME/Library/Logs/TV Remote.log"
+cd {repo} || {{
+  /usr/bin/osascript -e 'display alert "TV Remote" message "The cleanyourtv folder has moved. Run tools/sony-remote.py --make-app again from its new place."'
+  exit 1
+}}
+TV_HOST={host} TV_PSK={psk} nohup {python} tools/sony-remote.py --port {port}{lan} >"$log" 2>&1 &
+for _ in $(seq 40); do
+  sleep 0.25
+  /usr/bin/curl -fs -o /dev/null -m 1 "$url" && exit 0
+done
+/usr/bin/osascript -e 'display alert "TV Remote" message "The remote did not start. What went wrong is in ~/Library/Logs/TV Remote.log."'
+"""
+
+
+def icon_png(size=512):
+    """The app icon as PNG bytes: a dark rounded square, the grey D-pad ring and a white OK button."""
+    c = size / 2
+
+    def cover(d):  # distance outside a shape -> coverage, with a one-pixel soft edge
+        return max(0.0, min(1.0, 0.5 - d))
+
+    def blend(base, color, a):
+        return tuple(round(b + (k - b) * a) for b, k in zip(base, color))
+
+    rows = []
+    for y in range(size):
+        row = bytearray([0])
+        for x in range(size):
+            px, py = x + 0.5, y + 0.5
+            # rounded square 0.8 of the canvas, corner radius 0.18
+            half, rad = size * 0.4, size * 0.18
+            qx, qy = max(abs(px - c) - (half - rad), 0), max(abs(py - c) - (half - rad), 0)
+            a = cover((qx * qx + qy * qy) ** 0.5 - rad)
+            rgb = (21, 24, 30)
+            r = ((px - c) ** 2 + (py - c) ** 2) ** 0.5
+            rgb = blend(rgb, (53, 57, 69), cover(r - size * 0.27))
+            rgb = blend(rgb, (21, 24, 30), cover(r - size * 0.17))
+            rgb = blend(rgb, (238, 240, 244), cover(r - size * 0.11))
+            row += bytes(rgb) + bytes([round(255 * a)])
+        rows.append(bytes(row))
+
+    def chunk(kind, data):
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
+
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", size, size, 8, 6, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(b"".join(rows), 9)) + chunk(b"IEND", b""))
+
+
+def make_app(host, psk, args, folder):
+    """Write TV Remote.app into folder and return its path."""
+    app = os.path.join(os.path.expanduser(folder), "TV Remote.app")
+    if os.path.exists(app):
+        try:
+            with open(os.path.join(app, "Contents", "Info.plist"), "rb") as f:
+                ours = plistlib.load(f).get("CFBundleIdentifier") == APP_ID
+        except (OSError, plistlib.InvalidFileException):
+            ours = False
+        if not ours:
+            sys.exit(f"{app} exists and was not made by this script; move it away first.")
+        shutil.rmtree(app)
+    macos, resources = os.path.join(app, "Contents", "MacOS"), os.path.join(app, "Contents", "Resources")
+    os.makedirs(macos)
+    os.makedirs(resources)
+    repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    script = os.path.join(macos, "TV Remote")
+    with open(script, "w") as f:
+        f.write(APP_SCRIPT.format(port=args.port, repo=shlex.quote(repo), host=shlex.quote(host),
+                                  psk=shlex.quote(psk), python=shlex.quote(sys.executable),
+                                  lan=" --lan" if args.lan else ""))
+    os.chmod(script, 0o755)
+    info = {"CFBundleName": "TV Remote", "CFBundleDisplayName": "TV Remote", "CFBundleIdentifier": APP_ID,
+            "CFBundleExecutable": "TV Remote", "CFBundlePackageType": "APPL", "CFBundleVersion": "1",
+            "CFBundleShortVersionString": "1.0", "LSUIElement": True}
+    png = os.path.join(resources, "AppIcon.png")
+    with open(png, "wb") as f:
+        f.write(icon_png())
+    # sips (on every Mac) turns the PNG into the .icns Finder and the Dock want.
+    if shutil.which("sips") and subprocess.run(
+            ["sips", "-s", "format", "icns", png, "--out", os.path.join(resources, "AppIcon.icns")],
+            capture_output=True).returncode == 0:
+        info["CFBundleIconFile"] = "AppIcon"
+    with open(os.path.join(app, "Contents", "Info.plist"), "wb") as f:
+        plistlib.dump(info, f)
+    return app
+
+
 def main():
     ap = argparse.ArgumentParser(description="Browser remote for Sony BRAVIA TVs over IP control.")
     ap.add_argument("--port", type=int, default=8765, help="local port for the page (default 8765)")
     ap.add_argument("--lan", action="store_true", help="serve other devices on the network too")
     ap.add_argument("--no-browser", action="store_true", help="don't open the page")
+    ap.add_argument("--make-app", nargs="?", const="~/Applications", metavar="FOLDER",
+                    help="write a one-click TV Remote.app with these settings (default ~/Applications)")
     args = ap.parse_args()
     host, psk = os.environ.get("TV_HOST"), os.environ.get("TV_PSK")
     if not host or not psk:
         sys.exit("Set TV_HOST and TV_PSK, e.g.  TV_HOST=192.168.1.50 TV_PSK=<key> python3 tools/sony-remote.py\n"
                  "(the key is the TV's Settings > Network & Internet > Home network > IP control > Pre-Shared Key)")
+    if args.make_app:
+        app = make_app(host, psk, args, args.make_app)
+        print(f"Made {app}\nOpen it from Launchpad or Spotlight (\"TV Remote\"), or drag it to the Dock.")
+        return
     tv = Tv(host, psk)
     server = ThreadingHTTPServer(("0.0.0.0" if args.lan else "127.0.0.1", args.port),
                                  make_handler(tv, args.lan, start_command(host, psk, args)))

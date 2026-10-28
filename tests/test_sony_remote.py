@@ -6,6 +6,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 import importlib.util
 import json
+import os
+import plistlib
+import subprocess
+import tempfile
 import threading
 import urllib.error
 import urllib.request
@@ -179,6 +183,26 @@ class SonyRemoteTest(unittest.TestCase):
         self.assertTrue(command.startswith("cd "))
         self.assertTrue(command.endswith(" && TV_HOST=192.168.1.210 TV_PSK=0000 "
                                          "python3 tools/sony-remote.py --lan --port 9000"))
+
+
+    def test_make_app(self):
+        with tempfile.TemporaryDirectory() as folder:
+            args = type("Args", (), {"lan": False, "port": 8765})()
+            app = Path(remote.make_app("192.168.1.210", "it's 0000", args, folder))
+            self.assertEqual(app.name, "TV Remote.app")
+            info = plistlib.loads((app / "Contents" / "Info.plist").read_bytes())
+            self.assertEqual(info["CFBundleExecutable"], "TV Remote")
+            script = app / "Contents" / "MacOS" / "TV Remote"
+            self.assertTrue(os.access(script, os.X_OK))
+            body = script.read_text()
+            self.assertIn("TV_PSK='it'\"'\"'s 0000'", body)
+            self.assertIn(f"cd {ROOT}", body)
+            self.assertEqual(subprocess.run(["bash", "-n", str(script)]).returncode, 0)
+            self.assertTrue((app / "Contents" / "Resources" / "AppIcon.png").read_bytes().startswith(b"\x89PNG"))
+            remote.make_app("192.168.1.210", "0000", args, folder)  # remaking replaces its own app
+            (app / "Contents" / "Info.plist").write_bytes(plistlib.dumps({"CFBundleIdentifier": "other"}))
+            with self.assertRaises(SystemExit):
+                remote.make_app("192.168.1.210", "0000", args, folder)  # but never someone else's
 
 
 if __name__ == "__main__":
