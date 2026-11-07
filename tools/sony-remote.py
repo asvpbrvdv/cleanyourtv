@@ -179,9 +179,22 @@ PAGE = """<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TV Remote</title>
+<script>
+// Before first paint, so the page never flashes the other theme: the viewer's own choice, else the system's.
+(function () {
+  var t = null;
+  try { t = localStorage.getItem("theme"); } catch (e) {}
+  if (t !== "light" && t !== "dark") t = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  document.documentElement.dataset.theme = t;
+})();
+</script>
 <style>
-:root{--bg:#0b0c0f;--pad:#1a1c22;--key:#262931;--key-hi:#353945;--text:#eef0f4;--dim:#8a8f9c;--accent:#cfffcf;
- --red:#e5484d;--red-hi:#f2555a;--green:#46c46e}
+:root{color-scheme:dark;--bg:#0b0c0f;--pad:#1a1c22;--key:#262931;--key-hi:#353945;--text:#eef0f4;--dim:#8a8f9c;
+ --accent:#cfffcf;--red:#e5484d;--red-hi:#f2555a;--green:#46c46e;--err:#ff8a8a;--line:#262931;
+ --letter:#353945;--mod:#262931;--ok:#353945;--shadow:none}
+:root[data-theme="light"]{color-scheme:light;--bg:#f2f3f6;--pad:#e2e5ea;--key:#ffffff;--key-hi:#eceef2;
+ --text:#15181e;--dim:#6b7180;--red:#e0393f;--red-hi:#ec474d;--green:#239a4c;--err:#c8282e;--line:#d3d7de;
+ --letter:#ffffff;--mod:#c5cad3;--ok:#ffffff;--shadow:0 1px 2px rgba(21,24,30,.12)}
 *{box-sizing:border-box}
 body{margin:0;min-height:100vh;display:flex;justify-content:center;align-items:flex-start;
  background:var(--bg);color:var(--text);font:15px/1.3 -apple-system,BlinkMacSystemFont,"Inter",sans-serif}
@@ -192,17 +205,19 @@ main{grid-column:2;grid-row:1;width:100%}
 .row{display:flex;gap:10px;justify-content:center;margin:10px 0}
 button{appearance:none;border:0;border-radius:14px;background:var(--key);color:var(--text);
  font:inherit;padding:12px 0;flex:1;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent}
+button{box-shadow:var(--shadow)}
 button:hover{background:var(--key-hi)}
 button:active{transform:scale(.96)}
 .pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;background:var(--pad);
  border-radius:50%;padding:18px;aspect-ratio:1;margin:16px 0}
 .pad button{border-radius:50%;font-size:20px;padding:0}
-.pad .ok{background:var(--key-hi);font-size:15px}
+.pad .ok{background:var(--ok);font-size:15px;font-weight:600}
+.pad .ok:hover{background:var(--key-hi)}
 h2{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin:18px 0 6px}
 #inputs{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
 #inputs button.off{color:var(--dim)}
 #status{min-height:1.3em;font-size:13px;color:var(--dim);text-align:center;margin-top:14px}
-#status.err{color:#ff8a8a}
+#status.err{color:var(--err)}
 svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle}
 button.round{flex:0 0 44px;height:44px;padding:0;border-radius:50%}
 button.power{background:var(--red);color:#fff}
@@ -210,8 +225,8 @@ button.power:hover{background:var(--red-hi)}
 button.kbd.on{background:var(--text);color:var(--bg)}
 button.mute.on{background:var(--red);color:#fff}
 button.mute.on:hover{background:var(--red-hi)}
-#copy{display:block;width:100%;margin:22px 0 0;padding:12px;text-align:left;background:none;
- border:1px solid var(--key);color:var(--dim)}
+#copy{display:block;width:100%;margin:22px 0 0;padding:12px;text-align:left;background:none;box-shadow:none;
+ border:1px solid var(--line);color:var(--dim)}
 #copy:hover{background:var(--pad)}
 #copy .label{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;letter-spacing:.04em;margin-bottom:6px}
 #copy .label svg{width:15px;height:15px}
@@ -228,14 +243,20 @@ button.mute.on:hover{background:var(--red-hi)}
 .field.idle #typed{color:var(--dim)}
 .keys{background:var(--pad);border-radius:16px;padding:8px 4px 6px;margin-top:10px}
 .krow{display:flex;gap:5px;justify-content:center;margin:0 0 9px}
-.krow button{flex:0 0 calc((100% - 45px)/10);padding:11px 0;border-radius:7px;font-size:16px;background:var(--key-hi)}
-.krow button.mod{flex:1 1 0;background:var(--key);font-size:13px}
+.krow button{flex:0 0 calc((100% - 45px)/10);padding:11px 0;border-radius:7px;font-size:16px;background:var(--letter)}
+.krow button.mod{flex:1 1 0;background:var(--mod);font-size:13px}
+.krow button:hover{background:var(--key-hi)}
 .krow button.space{flex:4 1 0}
 .krow button.mod.on{background:var(--text);color:var(--bg)}
 .krow.home{padding:0 5%}
 .hint{font-size:12px;color:var(--dim);margin:8px 2px 0;line-height:1.45}
+#theme{position:fixed;top:14px;right:14px;flex:none;width:36px;height:36px;padding:0;border-radius:50%;color:var(--dim)}
+#theme:hover{color:var(--text)}
+#theme svg{width:18px;height:18px}
 @media (max-width:900px){#keyboard{grid-column:1/-1;grid-row:2;justify-self:center;max-width:340px;padding-right:0;margin-top:24px}}
-</style></head><body><div class="app">
+</style></head><body>
+<button id="theme" aria-label="Switch to light mode"></button>
+<div class="app">
 <section id="keyboard" hidden aria-label="Keyboard">
  <div class="field idle" id="field"><span class="dot"></span><span id="typed"></span></div>
  <div class="keys" id="keys"></div>
@@ -256,6 +277,26 @@ button.mute.on:hover{background:var(--red-hi)}
 <button id="copy" title="Click to copy"><span class="label">Copy and paste into Terminal<svg viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg></span>
 <code>__COMMAND__</code></button>
 </main></div><script>
+const SUN = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>';
+const MOON = '<svg viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>';
+const themeBtn = document.getElementById("theme");
+function showTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.innerHTML = t === "dark" ? SUN : MOON;
+  themeBtn.setAttribute("aria-label", t === "dark" ? "Switch to light mode" : "Switch to dark mode");
+}
+showTheme(document.documentElement.dataset.theme);
+themeBtn.addEventListener("click", () => {
+  const t = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+  try { localStorage.setItem("theme", t); } catch (e) {}
+  showTheme(t);
+});
+// Until the viewer picks one, follow the system as it changes (macOS Auto appearance).
+matchMedia("(prefers-color-scheme: light)").addEventListener("change", e => {
+  let chosen = null;
+  try { chosen = localStorage.getItem("theme"); } catch (err) {}
+  if (!chosen) showTheme(e.matches ? "light" : "dark");
+});
 const status = document.getElementById("status");
 function say(text, err) { status.textContent = text; status.className = err ? "err" : ""; }
 async function post(path, body) {
