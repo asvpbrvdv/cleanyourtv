@@ -19,6 +19,9 @@ so each HDMI port gets its own button. Power and the mute icon use the system an
 --make-app writes a one-click Mac app with these settings: it reopens the page when the remote is
 running and starts it in the background when it isn't, so closing the tab or Terminal costs nothing.
 
+GET /health answers {"status": "ok"} (HTTP 200) when the TV takes a keyed call, else HTTP 503 with
+the reason, for uptime monitors such as Uptime Kuma.
+
 The page only answers on 127.0.0.1 unless --lan is given: anyone who can reach it can press buttons
 on the TV without knowing the key.
 """
@@ -451,6 +454,19 @@ fetch("/inputs").then(async r => {
 """
 
 
+def tv_error_text(tv, e):
+    """What went wrong talking to the TV, in words for the page and the health check."""
+    if isinstance(e, PermissionError) or isinstance(e, urllib.error.HTTPError) and e.code == 403:
+        return "The TV refused the key. Check TV_PSK against the TV's Pre-Shared Key."
+    if isinstance(e, urllib.error.HTTPError):
+        return f"The TV answered HTTP {e.code}. Is Simple IP control switched on?"
+    if isinstance(e, (urllib.error.URLError, OSError)):
+        return f"Can't reach the TV at {tv.base}. Is it on, with IP control switched on?"
+    if isinstance(e, TvError):
+        return f"The TV said no: {e}"
+    return str(e)
+
+
 def make_handler(tv, lan, command=""):
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *args):
@@ -472,15 +488,7 @@ def make_handler(tv, lan, command=""):
             return lan or host in ("127.0.0.1", "localhost", "::1")
 
         def tv_error(self, e):
-            if isinstance(e, PermissionError) or isinstance(e, urllib.error.HTTPError) and e.code == 403:
-                return self.reply(502, "The TV refused the key. Check TV_PSK against the TV's Pre-Shared Key.")
-            if isinstance(e, urllib.error.HTTPError):
-                return self.reply(502, f"The TV answered HTTP {e.code}. Is Simple IP control switched on?")
-            if isinstance(e, (urllib.error.URLError, OSError)):
-                return self.reply(502, f"Can't reach the TV at {tv.base}. Is it on, with IP control switched on?")
-            if isinstance(e, TvError):
-                return self.reply(502, f"The TV said no: {e}")
-            return self.reply(502, str(e))
+            return self.reply(502, tv_error_text(tv, e))
 
         def do_GET(self):
             if not self.allowed():
@@ -498,6 +506,14 @@ def make_handler(tv, lan, command=""):
                     return self.reply(200, json.dumps({"muted": tv.muted()}), "application/json")
                 except Exception:
                     return self.reply(200, json.dumps({"muted": None}), "application/json")
+            if self.path == "/health":
+                # For uptime monitors: 200 only when the TV answers a call that needs the key.
+                try:
+                    tv.inputs()
+                except Exception as e:
+                    return self.reply(503, json.dumps({"status": "error", "error": tv_error_text(tv, e)}),
+                                      "application/json")
+                return self.reply(200, json.dumps({"status": "ok"}), "application/json")
             if self.path == "/inputs":
                 try:
                     return self.reply(200, json.dumps(tv.inputs()), "application/json")

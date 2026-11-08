@@ -152,6 +152,22 @@ class SonyRemoteTest(unittest.TestCase):
         self.assertEqual(self.press("/input?uri=http%3A%2F%2Fexample.com")[0], 502)
         self.assertEqual(FakeTv.sent, [])
 
+    def test_health(self):
+        status, body = self.request("/health")
+        self.assertEqual((status, json.loads(body)), (200, {"status": "ok"}))
+        self.tv.psk = "1234"  # the TV answers but refuses the key
+        status, body = self.request("/health")
+        self.assertEqual(status, 503)
+        self.assertEqual(json.loads(body)["status"], "error")
+        self.assertIn("refused the key", json.loads(body)["error"])
+        self.tv.psk = PSK
+        self.tv_server.shutdown()  # the TV is gone
+        self.tv_server.server_close()
+        self.tv_server = serve(ThreadingHTTPServer(("127.0.0.1", 0), FakeTv))  # for tearDown
+        status, body = self.request("/health")
+        self.assertEqual(status, 503)
+        self.assertIn("Can't reach the TV", json.loads(body)["error"])
+
     def test_wrong_key_is_named(self):
         self.tv.psk = "1234"
         status, body = self.press("/key/ok")
