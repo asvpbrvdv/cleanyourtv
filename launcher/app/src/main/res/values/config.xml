@@ -7,6 +7,10 @@
 -->
 <resources>
 
+    <!-- Dot-matrix colour set: dark, light or color (NYC Subway line colours as identifiers). The Mode segment in
+         the top bar cycles them on the TV; a theme sets it with "mode" in config.json. -->
+    <string name="mode" translatable="false">dark</string>
+
     <!-- Apps pinned to the dock row at the bottom, in this order. Missing apps are skipped. -->
     <string-array name="dock_apps">
         <item>com.google.android.youtube.tv</item>

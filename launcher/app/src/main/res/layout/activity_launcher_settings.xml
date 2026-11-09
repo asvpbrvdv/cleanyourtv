@@ -5,7 +5,7 @@
     android:id="@+id/settingsRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FF000000"
+    android:background="?attr/dmBackground"
     android:fillViewport="true">
 
     <FrameLayout
@@ -25,7 +25,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/launcher_settings"
-                android:textColor="@color/dm_ink"
+                android:textColor="?attr/dmInk"
                 android:textSize="34sp"
                 android:fontFamily="@font/doto"
                 android:letterSpacing="0.04"
@@ -110,7 +110,7 @@
                 android:layout_marginStart="2dp"
                 android:layout_marginTop="8dp"
                 android:text="@string/advanced_effects_hint"
-                android:textColor="@color/dm_ink_60"
+                android:textColor="?attr/dmInk60"
                 android:textSize="9.5sp"
                 android:fontFamily="@font/space_mono"
                 android:letterSpacing="0.04"

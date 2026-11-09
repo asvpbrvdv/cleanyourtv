@@ -1,11 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Dot-matrix design, dark mode (docs/designs/dot-matrix). Code swaps these per mode at runtime. -->
-    <color name="dm_ink">#FFF2F2F2</color>
-    <color name="dm_ink_85">#D9F2F2F2</color>
-    <color name="dm_ink_60">#99F2F2F2</color>
-    <color name="dm_ink_55">#8CF2F2F2</color>
-    <color name="dm_ink_30">#4DF2F2F2</color>
-    <color name="dm_on_ink">#FF000000</color>
-    <color name="dm_accent">#FFD71921</color>
+    <!-- Dot-matrix design (docs/designs/dot-matrix). Layouts and drawables read these through the theme
+         attributes in attrs.xml; DotMatrix.Palette has the same values for code. -->
+    <color name="dm_dark_ink">#FFF2F2F2</color>
+    <color name="dm_dark_ink_85">#D9F2F2F2</color>
+    <color name="dm_dark_ink_60">#99F2F2F2</color>
+    <color name="dm_dark_ink_30">#4DF2F2F2</color>
+    <color name="dm_light_bg">#FFECEBE6</color>
+    <color name="dm_light_ink">#FF111111</color>
+    <color name="dm_light_ink_85">#D9111111</color>
+    <color name="dm_light_ink_55">#8C111111</color>
+    <color name="dm_light_ink_30">#4D111111</color>
+    <color name="dm_red">#FFD71921</color>
+    <color name="dm_line_red">#FFEE352E</color>
 </resources>

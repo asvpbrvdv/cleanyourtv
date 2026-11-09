@@ -2,9 +2,9 @@
 <!-- Inputs: nothing on this port (hollow ring). -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:state_focused="true">
-        <shape android:shape="oval"><stroke android:width="1.2dp" android:color="#B3000000" /></shape>
+        <shape android:shape="oval"><stroke android:width="1.2dp" android:color="?attr/dmOnInkDim" /></shape>
     </item>
     <item>
-        <shape android:shape="oval"><stroke android:width="1.2dp" android:color="@color/dm_ink_60" /></shape>
+        <shape android:shape="oval"><stroke android:width="1.2dp" android:color="?attr/dmInk60" /></shape>
     </item>
 </selector>

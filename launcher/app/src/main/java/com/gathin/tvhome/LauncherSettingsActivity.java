@@ -6,7 +6,12 @@ import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.LayerDrawable;
+import android.graphics.drawable.StateListDrawable;
 import android.provider.Settings;
+import android.view.Gravity;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -31,13 +36,16 @@ public final class LauncherSettingsActivity extends Activity {
     private int rowsBelowDock;
     private boolean animations;
     private boolean advancedEffects;
+    private DotMatrix.Palette palette;
 
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        palette = DotMatrix.palette(Config.load(this).mode);
+        DotMatrix.applyMode(this, palette.mode);
         setContentView(R.layout.activity_launcher_settings);
         findViewById(R.id.settingsRoot).setBackground(
-                DotMatrix.background(this, DotMatrix.BACKGROUND, DotMatrix.GRID_DOT));
+                DotMatrix.background(this, palette.background, palette.gridDot));
         wallpaperValue = findViewById(R.id.wallpaperValue);
         animationsValue = findViewById(R.id.animationsValue);
         advancedValue = findViewById(R.id.advancedValue);
@@ -105,7 +113,7 @@ public final class LauncherSettingsActivity extends Activity {
         followThemeChoice = findViewById(R.id.followThemeChoice);
         followThemeChoice.setOnClickListener(v -> {
             if (!hasOnTvChoices()) return;
-            choices.edit().remove("columns").remove(Config.ROWS_BELOW_DOCK_KEY).remove("animations")
+            choices.edit().remove("columns").remove(Config.MODE_KEY).remove(Config.ROWS_BELOW_DOCK_KEY).remove("animations")
                     .remove("advanced_effects").remove(Config.WALLPAPER_CHOICE_KEY).commit();
             Config current = Config.load(this);
             columns = current.columns;
@@ -121,6 +129,11 @@ public final class LauncherSettingsActivity extends Activity {
         });
         findViewById(R.id.tvSettingsChoice).setOnClickListener(v ->
                 open(new Intent(Settings.ACTION_SETTINGS)));
+        if (palette.colour()) {
+            // Colour mode: each section's dots in its line colour (apps per row yellow, rows below dock lime).
+            for (TextView box : columnChoices) box.setBackground(boxBackground(DotMatrix.YELLOW));
+            for (TextView box : rowChoices) box.setBackground(boxBackground(DotMatrix.LIME));
+        }
         refresh();
         columnChoices[Math.max(0, Math.min(columns - 4, 3))].requestFocus();
     }
@@ -211,11 +224,47 @@ public final class LauncherSettingsActivity extends Activity {
     }
 
     private void setDot(TextView value, boolean on) {
-        value.setCompoundDrawablesRelativeWithIntrinsicBounds(on ? getDrawable(R.drawable.name_dot) : null, null, null, null);
+        Drawable dot = null;
+        if (on) {
+            dot = getDrawable(R.drawable.name_dot).mutate();
+            if (palette.colour()) dot.setTint(DotMatrix.PURPLE);   // colour mode: the switches' line colour
+        }
+        value.setCompoundDrawablesRelativeWithIntrinsicBounds(dot, null, null, null);
+    }
+
+    /** dm_box_bg.xml with the current-value dot in this colour (colour mode). */
+    private Drawable boxBackground(int dotColour) {
+        float d = getResources().getDisplayMetrics().density;
+        StateListDrawable states = new StateListDrawable();
+        states.addState(new int[]{android.R.attr.state_focused, android.R.attr.state_selected}, withDot(box(true, d), dotColour, d));
+        states.addState(new int[]{android.R.attr.state_focused}, box(true, d));
+        states.addState(new int[]{android.R.attr.state_selected}, withDot(box(false, d), dotColour, d));
+        states.addState(new int[]{}, box(false, d));
+        return states;
+    }
+
+    private GradientDrawable box(boolean filled, float d) {
+        GradientDrawable box = new GradientDrawable();
+        box.setCornerRadius(12 * d);
+        if (filled) box.setColor(palette.ink);
+        else box.setStroke(Math.max(1, Math.round(d)), palette.ink30);
+        return box;
+    }
+
+    private static Drawable withDot(Drawable box, int colour, float d) {
+        GradientDrawable dot = new GradientDrawable();
+        dot.setShape(GradientDrawable.OVAL);
+        dot.setColor(colour);
+        LayerDrawable layers = new LayerDrawable(new Drawable[]{box, dot});
+        int size = Math.round(5 * d);
+        layers.setLayerSize(1, size, size);
+        layers.setLayerGravity(1, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        layers.setLayerInsetBottom(1, Math.round(6 * d));
+        return layers;
     }
 
     private boolean hasOnTvChoices() {
-        return choices.contains("columns") || choices.contains(Config.ROWS_BELOW_DOCK_KEY)
+        return choices.contains("columns") || choices.contains(Config.MODE_KEY) || choices.contains(Config.ROWS_BELOW_DOCK_KEY)
                 || choices.contains("animations") || choices.contains("advanced_effects")
                 || choices.contains(Config.WALLPAPER_CHOICE_KEY);
     }

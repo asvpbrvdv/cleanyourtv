@@ -4,24 +4,24 @@
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:state_focused="true" android:state_selected="true">
         <layer-list>
-            <item><shape android:shape="rectangle"><solid android:color="@color/dm_ink" /><corners android:radius="12dp" /></shape></item>
+            <item><shape android:shape="rectangle"><solid android:color="?attr/dmInk" /><corners android:radius="12dp" /></shape></item>
             <item android:gravity="bottom|center_horizontal" android:bottom="6dp" android:width="5dp" android:height="5dp">
-                <shape android:shape="oval"><solid android:color="@color/dm_accent" /></shape>
+                <shape android:shape="oval"><solid android:color="?attr/dmAccent" /></shape>
             </item>
         </layer-list>
     </item>
     <item android:state_focused="true">
-        <shape android:shape="rectangle"><solid android:color="@color/dm_ink" /><corners android:radius="12dp" /></shape>
+        <shape android:shape="rectangle"><solid android:color="?attr/dmInk" /><corners android:radius="12dp" /></shape>
     </item>
     <item android:state_selected="true">
         <layer-list>
-            <item><shape android:shape="rectangle"><stroke android:width="1dp" android:color="@color/dm_ink_30" /><corners android:radius="12dp" /></shape></item>
+            <item><shape android:shape="rectangle"><stroke android:width="1dp" android:color="?attr/dmInk30" /><corners android:radius="12dp" /></shape></item>
             <item android:gravity="bottom|center_horizontal" android:bottom="6dp" android:width="5dp" android:height="5dp">
-                <shape android:shape="oval"><solid android:color="@color/dm_accent" /></shape>
+                <shape android:shape="oval"><solid android:color="?attr/dmAccent" /></shape>
             </item>
         </layer-list>
     </item>
     <item>
-        <shape android:shape="rectangle"><stroke android:width="1dp" android:color="@color/dm_ink_30" /><corners android:radius="12dp" /></shape>
+        <shape android:shape="rectangle"><stroke android:width="1dp" android:color="?attr/dmInk30" /><corners android:radius="12dp" /></shape>
     </item>
 </selector>

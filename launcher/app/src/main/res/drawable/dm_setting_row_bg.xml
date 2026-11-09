@@ -2,9 +2,9 @@
 <!-- Launcher settings: a switch or action row (outline, radius 12), filled with ink when focused. -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:state_focused="true">
-        <shape android:shape="rectangle"><solid android:color="@color/dm_ink" /><corners android:radius="12dp" /></shape>
+        <shape android:shape="rectangle"><solid android:color="?attr/dmInk" /><corners android:radius="12dp" /></shape>
     </item>
     <item>
-        <shape android:shape="rectangle"><stroke android:width="1dp" android:color="@color/dm_ink_30" /><corners android:radius="12dp" /></shape>
+        <shape android:shape="rectangle"><stroke android:width="1dp" android:color="?attr/dmInk30" /><corners android:radius="12dp" /></shape>
     </item>
 </selector>

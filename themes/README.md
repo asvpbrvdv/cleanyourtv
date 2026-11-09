@@ -49,7 +49,8 @@ is ignored, and a file that doesn't parse is ignored as a whole, so a theme can 
 | `advanced_effects` | bool | Optional lifted tile, icon zoom, smooth ambient colour and app opening effects; false by default |
 | `show_home_settings_shortcut` | bool | Keep the optional Default-home tile visible when the TV has a home picker; false by default |
 | `show_stats` | bool | One line under the clock with CPU, free memory and free storage. Off unless set |
-| `background_color` | `#RRGGBB` | Colour behind everything; black by default |
+| `mode` | `dark`, `light` or `color` | The dot-matrix colour set: black with one red (`dark`, the default), paper white with black ink (`light`), or black with NYC Subway line colours marking each item (`color`). The Mode button in the top bar cycles them on the TV; that choice is cleared by Follow theme and by a theme push |
+| `background_color` | `#RRGGBB` | Colour behind everything in dark and color mode (light mode uses its own paper white); black by default |
 | `sky_intensity` | 0 to 100 | Time-of-day backdrop: a dark gradient that follows the clock, 0 hides it (default) |
 | `wallpaper` | bool | Show `wallpaper.jpg` from the theme folder (`true`), or ignore it (`false`) |
 | `wallpaper_rotation_minutes` | 0 to 1440 | Randomly rotate images in the theme's `wallpapers/` folder at this interval; 0 keeps the single-image behaviour |

@@ -2,9 +2,9 @@
 <!-- Inputs: a device is connected (filled dot). -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:state_focused="true">
-        <shape android:shape="oval"><solid android:color="#B3000000" /></shape>
+        <shape android:shape="oval"><solid android:color="?attr/dmOnInkDim" /></shape>
     </item>
     <item>
-        <shape android:shape="oval"><solid android:color="@color/dm_ink_60" /></shape>
+        <shape android:shape="oval"><solid android:color="?attr/dmInk60" /></shape>
     </item>
 </selector>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:state_focused="true" android:color="@color/dm_on_ink" />
-    <item android:state_selected="true" android:color="@color/dm_on_ink" />
-    <item android:color="@color/dm_ink_85" />
+    <item android:state_focused="true" android:color="?attr/dmOnInk" />
+    <item android:state_selected="true" android:color="?attr/dmOnInk" />
+    <item android:color="?attr/dmInk85" />
 </selector>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- A popup row's icon: the accent colour on the focused (ink) row. -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:state_focused="true" android:color="@color/dm_accent" />
-    <item android:color="@color/dm_ink" />
+    <item android:state_focused="true" android:color="?attr/dmAccent" />
+    <item android:color="?attr/dmInk" />
 </selector>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dot-matrix colours, set per mode by Theme.TvHome.Dark, .Light and .Color (styles.xml). -->
+    <attr name="dmBackground" format="color" />
+    <attr name="dmInk" format="color" />
+    <attr name="dmInk85" format="color" />
+    <attr name="dmInk60" format="color" />
+    <attr name="dmInk55" format="color" />
+    <attr name="dmInk30" format="color" />
+    <attr name="dmOnInk" format="color" />
+    <!-- Secondary text on a focused (ink-filled) row: the text-on-ink colour at 70 %. -->
+    <attr name="dmOnInkDim" format="color" />
+    <attr name="dmAccent" format="color" />
+</resources>

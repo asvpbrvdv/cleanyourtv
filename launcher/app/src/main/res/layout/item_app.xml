@@ -63,7 +63,7 @@
         android:translationY="-6dp"
         android:drawableStart="@drawable/name_dot"
         android:drawablePadding="7dp"
-        android:textColor="@color/dm_ink"
+        android:textColor="?attr/dmInk"
         android:textSize="11sp"
         android:fontFamily="@font/space_mono"
         android:letterSpacing="0.14"

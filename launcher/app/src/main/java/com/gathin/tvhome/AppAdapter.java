@@ -204,6 +204,8 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     /** Tile names and bundled banners that replace the app's own (config.xml, app_labels and app_banners). */
     private final Map<String, String> appLabels, appBanners;
     private final List<Entry> items = new ArrayList<>();
+    /** Dot-matrix colours (MainActivity sets the mode's before the first bind). */
+    private DotMatrix.Palette palette = DotMatrix.palette(DotMatrix.DARK);
 
     AppAdapter(Context ctx, TileListener listener, int dockSize, Config cfg) {
         this.ctx = ctx;
@@ -374,7 +376,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         // A faint 1dp outline on every tile; the focused one gets the ink ring (GlassView) around it as well.
         GradientDrawable outline = new GradientDrawable();
         outline.setCornerRadius(cornerRadius(w, density));
-        outline.setStroke(Math.max(1, Math.round(density)), 0x24FFFFFF);
+        outline.setStroke(Math.max(1, Math.round(density)), palette.tileOutline);
         card.setForeground(outline);
         TextView name = v.findViewById(R.id.name);
         // Wraps its text so the accent dot sits right before the name; a long name ellipsizes a little wider than the tile.
@@ -393,7 +395,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         // Below the dock's dashed outline (14dp outside the tile), as in the sketch.
         pipsLp.topMargin = h + Math.round(24 * density);
         pips.setLayoutParams(pipsLp);
-        return new Holder(v, listener, animations, advancedEffects, reducedMotion);
+        return new Holder(v, listener, animations, advancedEffects, reducedMotion, palette);
     }
 
     @Override
@@ -423,7 +425,17 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         h.name.setAlpha(focused ? 1f : 0f);
         h.pips.setAlpha(focused ? 1f : 0f);
         if (h.tint != null) h.tint.cancel();
-        TileTint.set(focused ? 1f : 0f, h.banner, h.icon);
+        TileTint.set(palette, focused ? 1f : 0f, h.banner, h.icon);
+        if (palette.colour()) {
+            int line = lineAt(position);
+            if (inDock) {
+                h.pips.getBackground().mutate().setTint(line);
+            } else {
+                // A lettered bullet in the app's line colour before its name.
+                h.name.setCompoundDrawablesRelativeWithIntrinsicBounds(
+                        new DotMatrix.Bullet(ctx, line, letterAt(position), 16, 9), null, null, null);
+            }
+        }
         h.card.setScaleX(focused && animations ? focusScale() : 1f);
         h.card.setScaleY(focused && animations ? focusScale() : 1f);
         h.card.setTranslationY(focused && advancedEffects ? -4f * ctx.getResources().getDisplayMetrics().density : 0f);
@@ -504,6 +516,26 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     @Override
     public long getItemId(int position) {
         return isLibraryAt(position) ? Long.MIN_VALUE : items.get(position).component.flattenToShortString().hashCode();
+    }
+
+    void setPalette(DotMatrix.Palette palette) {
+        this.palette = palette;
+    }
+
+    /**
+     * Colour mode's line colour for a tile: dock slots 1 to 4 red, green, blue, orange; grid apps A, B, C...
+     * cycling yellow, purple, lime, brown, grey, blue, green, orange.
+     */
+    int lineAt(int position) {
+        if (dockRow && position < dockSize) return DotMatrix.DOCK_LINES[position % DotMatrix.DOCK_LINES.length];
+        int i = Math.max(0, position - (dockRow ? dockSize : 0));
+        return DotMatrix.GRID_LINES[i % DotMatrix.GRID_LINES.length];
+    }
+
+    /** The grid app's letter in colour mode: A to Z, then again. */
+    private String letterAt(int position) {
+        int i = Math.max(0, position - (dockRow ? dockSize : 0));
+        return String.valueOf((char) ('A' + i % 26));
     }
 
     /** Uses this saved order from the next reload() (Order.ranks). */
@@ -661,9 +693,10 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         final boolean animations;
         final boolean advancedEffects;
         final boolean reducedMotion;
+        final DotMatrix.Palette palette;
 
         Holder(View v, TileListener listener, boolean animations, boolean advancedEffects,
-               boolean reducedMotion) {
+               boolean reducedMotion, DotMatrix.Palette palette) {
             super(v);
             card = v.findViewById(R.id.card);
             banner = v.findViewById(R.id.banner);
@@ -674,6 +707,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             this.animations = animations;
             this.advancedEffects = advancedEffects;
             this.reducedMotion = reducedMotion;
+            this.palette = palette;
 
             final float density = v.getResources().getDisplayMetrics().density;
             card.setOutlineProvider(new ViewOutlineProvider() {
@@ -701,8 +735,8 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                 if (tint != null) tint.cancel();
                 tint = null;
                 float s = focused && animations ? ZOOM : 1f;
-                if (!animations) TileTint.set(focused ? 1f : 0f, banner, icon);
-                else tint = TileTint.animate(focused, reducedMotion ? 100 : 220, banner, icon);
+                if (!animations) TileTint.set(palette, focused ? 1f : 0f, banner, icon);
+                else tint = TileTint.animate(palette, focused, reducedMotion ? 100 : 220, banner, icon);
                 if (!animations) {
                     pips.setAlpha(focused ? 1f : 0f);
                     view.setScaleX(1f);

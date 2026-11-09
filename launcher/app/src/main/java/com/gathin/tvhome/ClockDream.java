@@ -1,8 +1,11 @@
 package com.gathin.tvhome;
 
+import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 import android.service.dreams.DreamService;
+import android.view.ContextThemeWrapper;
+import android.view.LayoutInflater;
 import android.view.View;
 
 import java.util.Random;
@@ -34,7 +37,10 @@ public class ClockDream extends DreamService {
         setInteractive(false);   // any key wakes the TV back to where it was
         setFullscreen(true);
         setScreenBright(false);
-        setContentView(R.layout.dream_clock);
+        // A service has no theme of its own: give the layout the mode's colours, and colour mode's red dot.
+        Context themed = new ContextThemeWrapper(this, R.style.Theme_TvHome);
+        DotMatrix.applyMode(themed, Config.load(this).mode);
+        setContentView(LayoutInflater.from(themed).inflate(R.layout.dream_clock, null));
 
         content = findViewById(R.id.dreamContent);
     }

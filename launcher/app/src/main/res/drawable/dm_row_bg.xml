@@ -3,7 +3,7 @@
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:state_focused="true">
         <shape android:shape="rectangle">
-            <solid android:color="@color/dm_ink" />
+            <solid android:color="?attr/dmInk" />
             <corners android:radius="13dp" />
         </shape>
     </item>

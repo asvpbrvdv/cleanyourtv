@@ -11,6 +11,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ApplicationInfo;
+import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -115,7 +116,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private LinearLayout heroDots;
     /** Under the dock app's name: the accent dot and "02 / 04 · DOCK" (not on the cinematic shelf). */
     private View heroSlot;
+    private View heroSlotDot;
     private TextView heroSlotText;
+    /** Dot-matrix mode (Config.mode) and its colours. */
+    private int mode;
+    private DotMatrix.Palette palette;
+    private TextView btnMode;
+    /** After the Mode segment recreated Home: focus goes back to it instead of a tile. */
+    private boolean focusModeSegment;
+    /** Colour mode: the next Inputs row's position, for its line colour. */
+    private int inputRowIndex;
     /** Cinematic top shelf (config.xml, cinematic_home): the focused dock app's artwork behind a larger shelf. */
     private boolean cinematic;
     private ImageView heroArt;
@@ -270,10 +280,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        density = getResources().getDisplayMetrics().density;
         // config.xml, overlaid by config.json from a pushed theme (see Config and tools/theme.sh).
         Config cfg = Config.load(this);
+        mode = cfg.mode;
+        palette = DotMatrix.palette(mode);
+        DotMatrix.applyMode(this, mode);
+        focusModeSegment = savedInstanceState != null && savedInstanceState.getBoolean(STATE_FOCUS_MODE);
+        setContentView(R.layout.activity_main);
+        density = getResources().getDisplayMetrics().density;
         settingsKeycodes = cfg.settingsKeycodes;
         settingsKeyPanel = cfg.settingsKeyPanel;
         COLUMNS = cfg.columns;
@@ -291,11 +305,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         root = findViewById(R.id.root);
         // The mode's colour with a faint dot grid; a theme wallpaper, if any, draws over both.
-        root.setBackground(DotMatrix.background(this, cfg.backgroundColor, DotMatrix.GRID_DOT));
+        // Light mode brings its own paper colour; dark and colour mode keep a theme's background_color (black).
+        int background = mode == DotMatrix.LIGHT ? palette.background : cfg.backgroundColor;
+        root.setBackground(DotMatrix.background(this, background, palette.gridDot));
         wallpaperPlayer = new WallpaperPlayer(this, root, cfg);
         sky = findViewById(R.id.sky);
         sky.setIntensity(cfg.skyIntensity);
         glass = findViewById(R.id.glass);
+        glass.setInk(palette.ink);
         if (festive) glass.setAccent(festival.accentColor());
         ambient = findViewById(R.id.ambient);
         // The glow is one bitmap, so its alpha can be applied while drawing it. Otherwise every frame of
@@ -311,6 +328,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         heroMeta = findViewById(R.id.heroMeta);
         heroDots = findViewById(R.id.heroDots);
         heroSlot = findViewById(R.id.heroSlot);
+        heroSlotDot = findViewById(R.id.heroSlotDot);
         heroSlotText = findViewById(R.id.heroSlotText);
         heroArt = findViewById(R.id.heroArt);
         cinematic = cfg.cinematicHome;
@@ -393,7 +411,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             public void onChildViewDetachedFromWindow(@NonNull View v) {
             }
         });
-        if (dockRow) grid.addItemDecoration(new DockDecoration(COLUMNS, density));
+        if (dockRow) {
+            DockDecoration outline = new DockDecoration(COLUMNS, density);
+            outline.setColor(palette.ink30);
+            grid.addItemDecoration(outline);
+        }
         if (animations) {
             int enterAnim = reducedMotion ? R.anim.tile_enter_reduced : R.anim.tile_enter;
             float enterDelay = reducedMotion ? 0f : 0.06f;
@@ -401,6 +423,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     AnimationUtils.loadAnimation(this, enterAnim), enterDelay));
         }
         adapter = new AppAdapter(this, this, COLUMNS, cfg);
+        adapter.setPalette(palette);
         dockApps = cfg.dockApps;
         fillDockLeavesSlots = !cfg.fillDock;
         adapter.setSavedOrder(Order.ranks(Order.load(Order.file(this)), dockApps));
@@ -472,7 +495,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         btnInputs = findViewById(R.id.btnInputs);
         View btnSettings = findViewById(R.id.btnSettings);
-        View btnMode = findViewById(R.id.btnMode);
+        btnMode = findViewById(R.id.btnMode);
+        btnMode.setText(DotMatrix.label(mode));
+        btnMode.setOnClickListener(v -> cycleMode());
         btnInputs.setOnClickListener(v -> showInputs());
         btnWifi.setOnClickListener(v -> openNetworkPill());
         btnWifi.setOnLongClickListener(v -> {
@@ -487,7 +512,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         setSegmentIcon(btnWifi, getDrawable(R.drawable.ic_wifi), true);
         setSegmentIcon((TextView) btnReorder, getDrawable(R.drawable.ic_swap_vert), true);
         setSegmentIcon((TextView) btnSettings, getDrawable(R.drawable.ic_settings), true);
-        setSegmentIcon((TextView) btnMode, getDrawable(R.drawable.ic_mode), true);
+        setSegmentIcon(btnMode, getDrawable(R.drawable.ic_mode), true);
         btnSettings.setOnLongClickListener(v -> {
             showSettingsMenu();
             return true;
@@ -682,7 +707,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         final int returnSlot = lastFocused;
         grid.post(() -> {
             int pos = adapter.positionOf(returnKey);
-            if (returnToLibrary || libraryFocusPending) focusLibrary();
+            if (focusModeSegment) {
+                // Home was rebuilt for a new mode: park the dock and its name as usual (focus the dock tile),
+                // then stay on the Mode segment so OK keeps cycling, as if Up had been pressed from the dock.
+                focusModeSegment = false;
+                focusTile((pos >= 0 ? pos : returnSlot) % COLUMNS);
+                grid.post(btnMode::requestFocus);
+            } else if (returnToLibrary || libraryFocusPending) focusLibrary();
             else focusTile(pos >= 0 ? pos : returnSlot);
             tilesReady = true;
             showCardPrompt();
@@ -1081,6 +1112,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             glassAccent = accent;
             glass.setAccent(accent);
         }
+        // Colour mode: the ring takes the tile's line colour (not over a festival or reorder mode's own).
+        if (palette.colour() && !festive && !reordering) glass.setAccent(adapter.lineAt(position));
         if (!glassShown) {
             springX.cancel();
             springY.cancel();
@@ -1205,6 +1238,18 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         heroName.setText(label);
         if (!cinematic) {
             heroSlotText.setText(getString(R.string.dock_slot, position + 1, Math.max(position + 1, adapter.dockFilled())));
+            if (palette.colour()) {
+                // Colour mode: an 18dp bullet in the slot's line colour, holding its number.
+                int line = DotMatrix.DOCK_LINES[position % DotMatrix.DOCK_LINES.length];
+                heroSlotDot.setBackground(new DotMatrix.Bullet(this, line, String.valueOf(position + 1), 18, 10));
+                ViewGroup.LayoutParams lp = heroSlotDot.getLayoutParams();
+                int size = Math.round(18 * density);
+                if (lp.width != size) {
+                    lp.width = size;
+                    lp.height = size;
+                    heroSlotDot.setLayoutParams(lp);
+                }
+            }
             return;
         }
         updateHeroMeta(position);
@@ -1763,6 +1808,31 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     // ---- top bar ---------------------------------------------------------------------------------
 
+    private static final String STATE_FOCUS_MODE = "focus_mode_segment";
+
+    @Override
+    protected void onSaveInstanceState(Bundle out) {
+        super.onSaveInstanceState(out);
+        out.putBoolean(STATE_FOCUS_MODE, focusModeSegment);
+    }
+
+    /** The Mode segment: Dark, Light, Color, then Dark again. Stored like the columns choice; Home redraws at once. */
+    private void cycleMode() {
+        getSharedPreferences(Config.SETTINGS_NAME, MODE_PRIVATE).edit()
+                .putString(Config.MODE_KEY, DotMatrix.modeName(DotMatrix.next(mode))).commit();
+        focusModeSegment = true;
+        recreate();
+    }
+
+    /** A top-bar segment's line colour in colour mode. */
+    private int segmentLine(TextView seg) {
+        int id = seg.getId();
+        if (id == R.id.btnInputs) return DotMatrix.INPUTS_LINE;
+        if (id == R.id.btnWifi) return DotMatrix.WIFI_LINE;
+        if (id == R.id.btnMode) return DotMatrix.MODE_LINE;
+        return DotMatrix.SETTINGS_LINE;
+    }
+
     private void updateShamsi() {
         if (shamsi) shamsiDate.setText(Shamsi.today());
     }
@@ -1773,11 +1843,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
      * own colours and size ({@code tint} false); the icon-only reorder segment has no dot.
      */
     private void setSegmentIcon(TextView seg, Drawable icon, boolean tint) {
+        // Colour mode: the focused segment's icon and dot take its line colour.
+        int line = palette.colour() ? segmentLine(seg) : 0;
         if (icon != null) {
             icon = icon.mutate();
             if (tint) {
                 int size = Math.round(17 * density);
-                icon.setTintList(getColorStateList(R.color.seg_text));
+                ColorStateList text = getColorStateList(R.color.seg_text);
+                icon.setTintList(line == 0 ? text : new ColorStateList(
+                        new int[][]{{android.R.attr.state_focused}, {}},
+                        new int[]{line, text.getDefaultColor()}));
                 icon.setBounds(0, 0, size, size);
             } else {
                 icon.setBounds(0, 0, icon.getIntrinsicWidth(), icon.getIntrinsicHeight());
@@ -1785,7 +1860,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         Drawable dot = null;
         if (seg != btnReorder) {
-            dot = getDrawable(R.drawable.seg_dot);
+            dot = getDrawable(R.drawable.seg_dot).mutate();
+            if (line != 0) dot.setTint(line);
             dot.setBounds(0, 0, dot.getIntrinsicWidth(), dot.getIntrinsicHeight());
         }
         // No view-wide compound tint: it would replace the icon's own tint and colour the dot too.
@@ -1836,10 +1912,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             row.append(session.shortName()).append("  ").append(when.format(session.start).toUpperCase(Locale.getDefault()));
             int color;
             switch (s.statuses.get(i)) {
-                case DONE: color = 0x47FFFFFF; break;
+                case DONE: color = 0x47000000 | (palette.ink & 0xFFFFFF); break;
                 case LIVE: color = RACE_RED; break;
-                case NEXT: color = 0xFFFFFFFF; break;
-                default: color = 0x99FFFFFF;
+                case NEXT: color = palette.ink; break;
+                default: color = 0x99000000 | (palette.ink & 0xFFFFFF);
             }
             row.setSpan(new android.text.style.ForegroundColorSpan(color), start, row.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
@@ -2069,6 +2145,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // filled (selected) while it is open.
         View anchor = findViewById(R.id.topButtons);
         View inputsSegment = findViewById(R.id.btnInputs);
+        inputRowIndex = 0;
         View panel = getLayoutInflater().inflate(R.layout.popup_inputs, root, false);
         LinearLayout rows = panel.findViewById(R.id.rows);
 
@@ -2238,7 +2315,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private void addSeparator(LinearLayout rows) {
         View line = new View(this);
-        line.setBackgroundColor(0x26F2F2F2);   // ink at 15 %
+        line.setBackgroundColor(0x26000000 | (palette.ink & 0xFFFFFF));   // ink at 15 %, in every mode
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (int) density);
         int m = (int) (6 * density), h = (int) (12 * density);
         lp.setMargins(h, m, h, m);
@@ -2247,7 +2324,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private void addInputRow(LinearLayout rows, PopupWindow popup, int iconRes, String title, int state, Runnable action) {
         View row = getLayoutInflater().inflate(R.layout.item_input, rows, false);
-        ((ImageView) row.findViewById(R.id.icon)).setImageResource(iconRes);
+        ImageView icon = row.findViewById(R.id.icon);
+        icon.setImageResource(iconRes);
+        if (palette.colour()) {
+            // Colour mode: the focused row's icon in its line colour (red, green, blue, orange, yellow).
+            int line = DotMatrix.INPUT_LINES[inputRowIndex % DotMatrix.INPUT_LINES.length];
+            icon.setImageTintList(DotMatrix.focusColours(line, palette.ink));
+        }
+        inputRowIndex++;
         // "Switch 2 · HDMI 4": the name, then the port in small type after it.
         int split = title.lastIndexOf(" \u00B7 ");
         if (split > 0) {

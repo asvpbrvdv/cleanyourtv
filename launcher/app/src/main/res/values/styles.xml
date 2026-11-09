@@ -1,9 +1,48 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- The launcher's theme. The dot-matrix colours default to dark mode; each screen applies the mode's
+         overlay below (DotMatrix.applyMode) before it is built. -->
     <style name="Theme.TvHome" parent="android:Theme.Material.NoActionBar.Fullscreen">
         <item name="android:windowBackground">@android:color/black</item>
         <item name="android:colorBackground">@android:color/black</item>
         <item name="android:windowAnimationStyle">@null</item>
+        <item name="dmBackground">@android:color/black</item>
+        <item name="dmInk">@color/dm_dark_ink</item>
+        <item name="dmInk85">@color/dm_dark_ink_85</item>
+        <item name="dmInk60">@color/dm_dark_ink_60</item>
+        <item name="dmInk55">@color/dm_dark_ink_60</item>
+        <item name="dmInk30">@color/dm_dark_ink_30</item>
+        <item name="dmOnInk">@android:color/black</item>
+        <item name="dmOnInkDim">#B3000000</item>
+        <item name="dmAccent">@color/dm_red</item>
+    </style>
+
+    <!-- Mode overlays: only the dot-matrix colours, so they also fit screens with another theme. -->
+    <style name="DotMatrix.Dark" parent="">
+        <item name="dmBackground">@android:color/black</item>
+        <item name="dmInk">@color/dm_dark_ink</item>
+        <item name="dmInk85">@color/dm_dark_ink_85</item>
+        <item name="dmInk60">@color/dm_dark_ink_60</item>
+        <item name="dmInk55">@color/dm_dark_ink_60</item>
+        <item name="dmInk30">@color/dm_dark_ink_30</item>
+        <item name="dmOnInk">@android:color/black</item>
+        <item name="dmOnInkDim">#B3000000</item>
+        <item name="dmAccent">@color/dm_red</item>
+    </style>
+    <!-- Colour mode: the dark look; each item's own line colour is set in code, this red covers the rest. -->
+    <style name="DotMatrix.Color" parent="DotMatrix.Dark">
+        <item name="dmAccent">@color/dm_line_red</item>
+    </style>
+    <style name="DotMatrix.Light" parent="">
+        <item name="dmBackground">@color/dm_light_bg</item>
+        <item name="dmInk">@color/dm_light_ink</item>
+        <item name="dmInk85">@color/dm_light_ink_85</item>
+        <item name="dmInk60">@color/dm_light_ink_55</item>
+        <item name="dmInk55">@color/dm_light_ink_55</item>
+        <item name="dmInk30">@color/dm_light_ink_30</item>
+        <item name="dmOnInk">@color/dm_dark_ink</item>
+        <item name="dmOnInkDim">#B3F2F2F2</item>
+        <item name="dmAccent">@color/dm_red</item>
     </style>
 
     <!-- Frosted pill, tvOS style. -->
@@ -59,7 +98,7 @@
     <style name="SettingsLabel">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:textColor">@color/dm_ink_60</item>
+        <item name="android:textColor">?attr/dmInk60</item>
         <item name="android:textSize">11sp</item>
         <item name="android:fontFamily">@font/space_mono</item>
         <item name="android:letterSpacing">0.16</item>

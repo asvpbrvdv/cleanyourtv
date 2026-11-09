@@ -5,7 +5,7 @@
     android:id="@+id/dreamRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FF000000">
+    android:background="?attr/dmBackground">
 
     <LinearLayout
         android:id="@+id/dreamContent"
@@ -26,7 +26,7 @@
                 android:layout_height="wrap_content"
                 android:format12Hour="h:mm"
                 android:format24Hour="HH:mm"
-                android:textColor="@color/dm_ink"
+                android:textColor="?attr/dmInk"
                 android:textSize="120sp"
                 android:fontFamily="@font/doto"
                 android:letterSpacing="0.04"
@@ -39,7 +39,7 @@
                 android:layout_marginStart="10dp"
                 android:format12Hour="a"
                 android:format24Hour=""
-                android:textColor="@color/dm_ink_60"
+                android:textColor="?attr/dmInk60"
                 android:textSize="18sp"
                 android:fontFamily="@font/space_mono"
                 android:letterSpacing="0.16"
@@ -66,7 +66,7 @@
                 android:layout_height="wrap_content"
                 android:format12Hour="@string/date_format_home"
                 android:format24Hour="@string/date_format_home"
-                android:textColor="@color/dm_ink_60"
+                android:textColor="?attr/dmInk60"
                 android:textSize="16sp"
                 android:fontFamily="@font/space_mono"
                 android:letterSpacing="0.2"
