@@ -131,6 +131,7 @@ class SonyRemoteTest(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertIn("TV Remote", body)
         self.assertNotIn("Copy and paste", body)
+        self.assertIn("html,button{touch-action:manipulation}", body)  # no double-tap zoom on iOS
         self.assertLess(body.index("<h2>Apps</h2>"), body.index("<h2>Inputs</h2>"))  # apps first
         self.assertNotIn(PSK, body)  # the page never shows the key
 

@@ -221,6 +221,8 @@ PAGE = """<!doctype html>
  --text:#15181e;--dim:#6b7180;--red:#e0393f;--red-hi:#ec474d;--green:#239a4c;--err:#c8282e;--line:#d3d7de;
  --letter:#ffffff;--mod:#c5cad3;--ok:#ffffff;--ok-hi:#eceef2;--shadow:0 1px 2px rgba(21,24,30,.12)}
 *{box-sizing:border-box}
+/* Quick taps are button presses, not iOS double-tap zoom; pinch zoom still works. */
+html,button{touch-action:manipulation}
 body{margin:0;min-height:100vh;display:flex;justify-content:center;align-items:flex-start;
  background:var(--bg);color:var(--text);font:15px/1.3 -apple-system,BlinkMacSystemFont,"Inter",sans-serif}
 /* The remote sits in the centre column whether or not the keyboard is open, so the keyboard button
