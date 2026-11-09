@@ -1,8 +1,8 @@
 # Dot-matrix design (in progress)
 
 The direction chosen for the launcher in November 2026, replacing the
-[glass design](../glass/). [`sketch.html`](sketch.html) is a rough sketch of the home screen with a
-Dark / Light switch; open it in a browser and use the arrow keys.
+[glass design](../glass/). [`sketch.html`](sketch.html) sketches every screen the launcher draws (Home, App grid, Inputs,
+Settings, Screensaver) with a Dark / Light switch; open it in a browser and use the arrow keys.
 
 ## So far
 
@@ -16,6 +16,13 @@ Dark / Light switch; open it in a browser and use the arrow keys.
 - **Header:** the button bar on the left; time and date in one small line on the right, the time the same
   size as the date.
 - **Under the app name:** its place in the dock, e.g. `02 / 04 · DOCK`.
+- **Top bar:** every segment keeps room for the red dot, so selecting one never changes its width.
+- **App grid:** the selected app's name under its tile with a red dot; the dock keeps its pips.
+- **Inputs:** Home dims and a panel drops from the bar; filled dot = device on, hollow = empty port.
+- **Settings:** two columns; number choices as boxes with a red dot under the current one, switches as
+  rows with a red dot when on.
+- **Screensaver:** a large dotted clock and the date, drifting slowly so nothing burns in.
+- **Modes:** dark and light are colour sets only, chosen in the theme's `config.json`; no extra space.
 
 ## Size check
 
