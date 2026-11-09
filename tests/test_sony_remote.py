@@ -127,13 +127,15 @@ class SonyRemoteTest(unittest.TestCase):
             return e.code, e.read().decode()
 
     def test_page(self):
+        self.tv.psk = "Distinct-Key-7Q"  # the page itself never calls the TV, so any key will do here
         status, body = self.request("/")
         self.assertEqual(status, 200)
         self.assertIn("TV Remote", body)
         self.assertNotIn("Copy and paste", body)
         self.assertIn("html,button{touch-action:manipulation}", body)  # no double-tap zoom on iOS
+        self.assertIn('"youtube": ["#ff0000", "#ffffff"], "pluto tv": ["#ffe500", "#000000"]', body)
         self.assertLess(body.index("<h2>Apps</h2>"), body.index("<h2>Inputs</h2>"))  # apps first
-        self.assertNotIn(PSK, body)  # the page never shows the key
+        self.assertNotIn("Distinct-Key-7Q", body)  # the page never shows the key
 
     def test_icons(self):
         status, body = self.request("/")

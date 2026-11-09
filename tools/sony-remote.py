@@ -243,6 +243,9 @@ button:active{transform:scale(.96)}
 h2{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin:18px 0 6px}
 #apps,#inputs{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
 #apps .note{grid-column:1/-1;color:var(--dim);font-size:13px}
+/* App buttons in their brand's two colours, the same in both themes. */
+#apps button.brand{background:var(--brand-bg);color:var(--brand-fg);font-weight:600}
+#apps button.brand:hover{background:var(--brand-bg);filter:brightness(.9)}
 #inputs button.off{color:var(--dim)}
 #status{min-height:1.3em;font-size:13px;color:var(--dim);text-align:center;margin-top:14px}
 #status.err{color:var(--err)}
@@ -447,6 +450,8 @@ document.addEventListener("paste", e => {
   if (!typing) return;
   e.preventDefault(); type((e.clipboardData.getData("text") || "").replace(/\\s+/g, " "));
 });
+// Background and text colour per app, by its name on the TV (lower case).
+const BRANDS = {"youtube": ["#ff0000", "#ffffff"], "pluto tv": ["#ffe500", "#000000"]};
 fetch("/apps").then(async r => {
   const box = document.getElementById("apps");
   if (!r.ok) { box.innerHTML = '<span class="note"></span>'; box.firstChild.textContent = await r.text(); return; }
@@ -455,6 +460,11 @@ fetch("/apps").then(async r => {
   for (const a of list) {
     const b = document.createElement("button");
     b.textContent = a.name;
+    const brand = BRANDS[a.name.toLowerCase()];
+    if (brand) {
+      b.classList.add("brand");
+      b.style.setProperty("--brand-bg", brand[0]); b.style.setProperty("--brand-fg", brand[1]);
+    }
     b.addEventListener("click", () => post("/app?uri=" + encodeURIComponent(a.uri)));
     box.appendChild(b);
   }
