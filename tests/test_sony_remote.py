@@ -124,6 +124,19 @@ class SonyRemoteTest(unittest.TestCase):
         self.assertNotIn("Copy and paste", body)
         self.assertNotIn(PSK, body)  # the page never shows the key
 
+    def test_icons(self):
+        status, body = self.request("/")
+        self.assertIn('<link rel="icon" type="image/png" href="/icon.png">', body)
+        self.assertIn('<link rel="apple-touch-icon" href="/apple-touch-icon.png">', body)
+        for path in remote.ICONS:
+            req = urllib.request.Request(self.url + path)
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                self.assertEqual(resp.headers["Content-Type"], "image/png")
+                self.assertTrue(resp.read().startswith(b"\x89PNG"))
+        # iOS shows transparency as black, so its icon is opaque to the corner; the tab icon is not.
+        self.assertEqual(remote.icon_png(16, bleed=True), remote.icon_png(16, bleed=True))
+        self.assertNotEqual(remote.icon_png(16, bleed=True), remote.icon_png(16))
+
     def test_power_toggles(self):
         self.assertEqual(self.press("/key/power")[0], 204)
         self.assertEqual(FakeTv.power, "standby")

@@ -181,6 +181,8 @@ PAGE = """<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TV Remote</title>
+<link rel="icon" type="image/png" href="/icon.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <script>
 // Before first paint, so the page never flashes the other theme: the viewer's own choice, else the system's.
 (function () {
@@ -454,12 +456,12 @@ def make_handler(tv, lan):
         def log_message(self, *args):
             pass
 
-        def reply(self, code, body, content_type="text/plain; charset=utf-8"):
-            data = body.encode()
+        def reply(self, code, body, content_type="text/plain; charset=utf-8", cache="no-store"):
+            data = body if isinstance(body, bytes) else body.encode()
             self.send_response(code)
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(data)))
-            self.send_header("Cache-Control", "no-store")
+            self.send_header("Cache-Control", cache)
             self.end_headers()
             self.wfile.write(data)
 
@@ -488,6 +490,8 @@ def make_handler(tv, lan):
                     return self.reply(200, json.dumps({"muted": tv.muted()}), "application/json")
                 except Exception:
                     return self.reply(200, json.dumps({"muted": None}), "application/json")
+            if self.path in ICONS:
+                return self.reply(200, icon(self.path), "image/png", "max-age=86400")
             if self.path == "/health":
                 # For uptime monitors: 200 only when the TV answers a call that needs the key.
                 try:
@@ -550,9 +554,13 @@ done
 """
 
 
-def icon_png(size=512):
-    """The app icon as PNG bytes: a dark rounded square, the grey D-pad ring and a white OK button."""
+def icon_png(size=512, bleed=False):
+    """The app icon as PNG bytes: a dark rounded square, the grey D-pad ring and a white OK button.
+
+    bleed fills the whole square with no transparent margin, for iOS, which rounds the corners itself
+    and shows transparency as black; the ring and button grow to match the larger background."""
     c = size / 2
+    k = 1 / 0.8 if bleed else 1
 
     def cover(d):  # distance outside a shape -> coverage, with a one-pixel soft edge
         return max(0.0, min(1.0, 0.5 - d))
@@ -568,12 +576,12 @@ def icon_png(size=512):
             # rounded square 0.8 of the canvas, corner radius 0.18
             half, rad = size * 0.4, size * 0.18
             qx, qy = max(abs(px - c) - (half - rad), 0), max(abs(py - c) - (half - rad), 0)
-            a = cover((qx * qx + qy * qy) ** 0.5 - rad)
+            a = 1.0 if bleed else cover((qx * qx + qy * qy) ** 0.5 - rad)
             rgb = (21, 24, 30)
             r = ((px - c) ** 2 + (py - c) ** 2) ** 0.5
-            rgb = blend(rgb, (53, 57, 69), cover(r - size * 0.27))
-            rgb = blend(rgb, (21, 24, 30), cover(r - size * 0.17))
-            rgb = blend(rgb, (238, 240, 244), cover(r - size * 0.11))
+            rgb = blend(rgb, (53, 57, 69), cover(r - size * 0.27 * k))
+            rgb = blend(rgb, (21, 24, 30), cover(r - size * 0.17 * k))
+            rgb = blend(rgb, (238, 240, 244), cover(r - size * 0.11 * k))
             row += bytes(rgb) + bytes([round(255 * a)])
         rows.append(bytes(row))
 
@@ -582,6 +590,17 @@ def icon_png(size=512):
 
     return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", size, size, 8, 6, 0, 0, 0))
             + chunk(b"IDAT", zlib.compress(b"".join(rows), 9)) + chunk(b"IEND", b""))
+
+
+# The page's icons, the Mac app's own, drawn on first request and kept: path -> (size, bleed).
+ICONS = {"/icon.png": (192, False), "/favicon.ico": (64, False), "/apple-touch-icon.png": (180, True)}
+_icons = {}
+
+
+def icon(path):
+    if path not in _icons:
+        _icons[path] = icon_png(*ICONS[path])
+    return _icons[path]
 
 
 def make_app(host, psk, args, folder):
