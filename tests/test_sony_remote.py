@@ -12,6 +12,7 @@ import subprocess
 import tempfile
 import threading
 import urllib.error
+import urllib.parse
 import urllib.request
 import unittest
 
@@ -27,6 +28,9 @@ INPUTS = [{"uri": "extInput:hdmi?port=1", "title": "HDMI 1", "label": "Apple TV"
           {"uri": "extInput:hdmi?port=2", "title": "HDMI 2", "label": "", "connection": False},
           {"uri": "extInput:cec?type=audiosystem&port=3&logicalAddr=5", "title": "Sonos Beam",
            "label": "", "connection": True}]
+APPS = [{"title": "YouTube", "uri": "com.sony.dtv.com.google.android.youtube.tv.ShellActivity", "icon": ""},
+        {"title": "Netflix", "uri": "com.sony.dtv.com.netflix.ninja.MainActivity", "icon": ""},
+        {"title": "Pluto TV", "uri": "com.sony.dtv.tv.pluto.android.EntryPoint", "icon": ""}]
 
 
 class FakeTv(BaseHTTPRequestHandler):
@@ -60,6 +64,11 @@ class FakeTv(BaseHTTPRequestHandler):
         elif call["method"] == "getCurrentExternalInputsStatus":
             result = [INPUTS]
         elif call["method"] == "setPlayContent":
+            self.sent.append(call["params"][0]["uri"])
+            result = []
+        elif call["method"] == "getApplicationList":
+            result = [APPS]
+        elif call["method"] == "setActiveApp":
             self.sent.append(call["params"][0]["uri"])
             result = []
         elif call["method"] == "getPowerStatus":
@@ -122,6 +131,7 @@ class SonyRemoteTest(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertIn("TV Remote", body)
         self.assertNotIn("Copy and paste", body)
+        self.assertLess(body.index("<h2>Apps</h2>"), body.index("<h2>Inputs</h2>"))  # apps first
         self.assertNotIn(PSK, body)  # the page never shows the key
 
     def test_icons(self):
@@ -161,6 +171,26 @@ class SonyRemoteTest(unittest.TestCase):
             {"uri": "extInput:hdmi?port=2", "name": "HDMI 2", "connected": False}])
         self.assertEqual(self.press("/input?uri=extInput%3Ahdmi%3Fport%3D2")[0], 204)
         self.assertEqual(FakeTv.sent, ["extInput:hdmi?port=2"])
+
+    def test_apps(self):
+        status, body = self.request("/apps")
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(body), [  # the defaults, in that order, Netflix not among them
+            {"name": "YouTube", "uri": APPS[0]["uri"]}, {"name": "Pluto TV", "uri": APPS[2]["uri"]}])
+        self.assertEqual(self.press("/app?uri=" + urllib.parse.quote(APPS[2]["uri"], safe=""))[0], 204)
+        self.assertEqual(FakeTv.sent, [APPS[2]["uri"]])
+
+    def test_apps_only_the_tvs_own(self):
+        self.assertEqual(self.press("/app?uri=" + urllib.parse.quote("http://example.com", safe=""))[0], 502)
+        self.assertEqual(FakeTv.sent, [])
+
+    def test_apps_wanted(self):
+        self.assertEqual(remote.apps_wanted(None), ["YouTube", "Pluto TV"])
+        self.assertEqual(remote.apps_wanted(" , "), ["YouTube", "Pluto TV"])
+        self.assertEqual(remote.apps_wanted("pluto tv, Plex ,NETFLIX"), ["pluto tv", "Plex", "NETFLIX"])
+        # Matched ignoring case, in the order asked; an app the TV doesn't have is left out.
+        self.assertEqual([a["name"] for a in self.tv.apps(remote.apps_wanted("pluto tv, Plex ,NETFLIX"))],
+                         ["Pluto TV", "Netflix"])
 
     def test_only_external_inputs(self):
         self.assertEqual(self.press("/input?uri=http%3A%2F%2Fexample.com")[0], 502)

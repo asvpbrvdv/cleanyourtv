@@ -15,6 +15,9 @@ open on the TV (appControl setTextForm), arrows still move, Enter is OK and Esc 
 Python 3 standard library only. The button codes come from the TV itself (getRemoteControllerInfo),
 with Sony's published codes as a fallback, and the input list from getCurrentExternalInputsStatus,
 so each HDMI port gets its own button. Power and the mute icon use the system and audio services.
+Above the inputs, buttons open your most used apps by name (appControl getApplicationList and
+setActiveApp): YouTube and Pluto TV unless TV_APPS lists others, e.g. TV_APPS="YouTube,Pluto TV,Plex".
+An app the TV doesn't have is left out.
 
 --make-app writes a one-click Mac app with these settings: it reopens the page when the remote is
 running and starts it in the background when it isn't, so closing the tab or Terminal costs nothing.
@@ -171,6 +174,24 @@ class Tv:
                 raise RuntimeError("No text field is open on the TV. Select a search or text box first.")
             raise
 
+    def app_list(self):
+        """Every app the TV can open, as {title: uri}, read from the TV each time."""
+        result = self.call("appControl", "getApplicationList")
+        return {a["title"]: a["uri"] for a in (result[0] if result else [])
+                if isinstance(a, dict) and a.get("title") and a.get("uri")}
+
+    def apps(self, wanted):
+        """The wanted apps the TV has, in the order asked, matched by title ignoring case."""
+        listed = {t.casefold(): (t, u) for t, u in self.app_list().items()}
+        found = [listed.get(w.casefold()) for w in wanted]
+        return [{"name": t, "uri": u} for t, u in filter(None, found)]
+
+    def launch(self, uri):
+        # Only an app the TV itself lists, so the page can't be used to send it any other URI.
+        if uri not in self.app_list().values():
+            raise RuntimeError("the TV doesn't list that app")
+        self.call("appControl", "setActiveApp", [{"uri": uri}])
+
     def switch(self, uri):
         if not uri.startswith("extInput:"):
             raise RuntimeError("only external inputs can be chosen here")
@@ -218,7 +239,8 @@ button:active{transform:scale(.96)}
 .pad .ok{background:var(--ok);font-size:15px;font-weight:600}
 .pad .ok:hover{background:var(--ok-hi)}
 h2{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin:18px 0 6px}
-#inputs{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+#apps,#inputs{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+#apps .note{grid-column:1/-1;color:var(--dim);font-size:13px}
 #inputs button.off{color:var(--dim)}
 #status{min-height:1.3em;font-size:13px;color:var(--dim);text-align:center;margin-top:14px}
 #status.err{color:var(--err)}
@@ -270,6 +292,7 @@ button.mute.on:hover{background:var(--red-hi)}
 </div>
 <div class="row"><button data-k="back">Back</button></div>
 <div class="row"><button data-k="voldown" aria-label="Volume down">Vol &minus;</button><button class="mute" data-k="mute" aria-label="Mute"></button><button data-k="volup" aria-label="Volume up">Vol +</button></div>
+<h2>Apps</h2><div id="apps"><span class="note">Loading&hellip;</span></div>
 <h2>Inputs</h2><div id="inputs"><span style="color:var(--dim)">Loading&hellip;</span></div>
 <div id="status"></div>
 </main></div><script>
@@ -422,6 +445,18 @@ document.addEventListener("paste", e => {
   if (!typing) return;
   e.preventDefault(); type((e.clipboardData.getData("text") || "").replace(/\\s+/g, " "));
 });
+fetch("/apps").then(async r => {
+  const box = document.getElementById("apps");
+  if (!r.ok) { box.innerHTML = '<span class="note"></span>'; box.firstChild.textContent = await r.text(); return; }
+  const list = await r.json();
+  box.innerHTML = list.length ? "" : '<span class="note">None of your apps were found on the TV.</span>';
+  for (const a of list) {
+    const b = document.createElement("button");
+    b.textContent = a.name;
+    b.addEventListener("click", () => post("/app?uri=" + encodeURIComponent(a.uri)));
+    box.appendChild(b);
+  }
+}).catch(() => {});
 fetch("/inputs").then(async r => {
   const box = document.getElementById("inputs");
   if (!r.ok) { box.textContent = ""; say(await r.text(), true); return; }
@@ -451,7 +486,16 @@ def tv_error_text(tv, e):
     return str(e)
 
 
-def make_handler(tv, lan):
+DEFAULT_APPS = ["YouTube", "Pluto TV"]
+
+
+def apps_wanted(setting):
+    """TV_APPS as a list of app names; unset or blank means the defaults."""
+    names = [n.strip() for n in (setting or "").split(",") if n.strip()]
+    return names or DEFAULT_APPS
+
+
+def make_handler(tv, lan, apps=DEFAULT_APPS):
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *args):
             pass
@@ -500,6 +544,11 @@ def make_handler(tv, lan):
                     return self.reply(503, json.dumps({"status": "error", "error": tv_error_text(tv, e)}),
                                       "application/json")
                 return self.reply(200, json.dumps({"status": "ok"}), "application/json")
+            if self.path == "/apps":
+                try:
+                    return self.reply(200, json.dumps(tv.apps(apps)), "application/json")
+                except Exception as e:
+                    return self.tv_error(e)
             if self.path == "/inputs":
                 try:
                     return self.reply(200, json.dumps(tv.inputs()), "application/json")
@@ -523,6 +572,8 @@ def make_handler(tv, lan):
                     if not isinstance(text, str):
                         return self.reply(400, "Expected {\"text\": ...}")
                     tv.type(text)
+                elif self.path.startswith("/app?uri="):
+                    tv.launch(urllib.parse.unquote(self.path[len("/app?uri="):]))
                 elif self.path.startswith("/input?uri="):
                     tv.switch(urllib.parse.unquote(self.path[len("/input?uri="):]))
                 else:
@@ -659,7 +710,7 @@ def main():
         return
     tv = Tv(host, psk)
     server = ThreadingHTTPServer(("0.0.0.0" if args.lan else "127.0.0.1", args.port),
-                                 make_handler(tv, args.lan))
+                                 make_handler(tv, args.lan, apps_wanted(os.environ.get("TV_APPS"))))
     url = f"http://127.0.0.1:{server.server_address[1]}"
     print(f"Remote for {host} at {url}" + ("  (and on this computer's IP from your phone)" if args.lan else ""))
     print("Ctrl+C to stop.")
