@@ -26,4 +26,4 @@ launcher's look for comparison.
 
 - Inter in the launcher goes up to weight 500 only (trimmed to keep the APK under 400 KB); a heavier time
   would need a larger font file.
-- The launcher before either design is tagged `before-dot-matrix` in git.
+- The launcher before either design is commit `f0f2686` on `main`.
