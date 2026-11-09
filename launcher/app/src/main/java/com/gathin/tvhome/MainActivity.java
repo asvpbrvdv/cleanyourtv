@@ -23,6 +23,7 @@ import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.LayerDrawable;
 import android.media.tv.TvContract;
 import android.media.tv.TvInputInfo;
 import android.media.tv.TvInputManager;
@@ -113,6 +114,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private View hero;
     private TextView heroMeta;
     private LinearLayout heroDots;
+    /** Under the dock app's name: the accent dot and "02 / 04 · DOCK" (not on the cinematic shelf). */
+    private View heroSlot;
+    private TextView heroSlotText;
     /** Cinematic top shelf (config.xml, cinematic_home): the focused dock app's artwork behind a larger shelf. */
     private boolean cinematic;
     private ImageView heroArt;
@@ -128,7 +132,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private boolean heroShown;
     private boolean animations;
     private boolean advancedEffects;
-    private TextView greeting;
     private View btnInputs;
     private TextView btnWifi;
     private TextView shamsiDate;
@@ -139,8 +142,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** config.xml show_stats, overridable by a theme. Off: the line is gone and nothing is read. */
     private boolean showStats;
     private boolean shamsi;
-    /** greeting_name: said after the greeting, which is shown in capitals. */
-    private String greetingName = "";
     /** Optional time-of-day backdrop (config.xml, sky_intensity); 0 keeps it hidden. */
     private SkyView sky;
     private String vpnApp;
@@ -174,7 +175,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private DiyaDrawable diya;
     private BellDrawable bell;
     private MarigoldDrawable marigold;
-    private int greetingColor;
     /** The day the petal shower last played, so it greets the first Home of each day only. */
     private static LocalDate lastPetalShower;
     /** hidden_apps as the adapter sees them (config.xml or a theme's config.json): a hidden app gets no card either. */
@@ -259,7 +259,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private final Runnable minuteTick = new Runnable() {
         @Override
         public void run() {
-            updateGreeting();
+            updateShamsi();
             updateRace();
             updateWifiLabel();
             sky.update();
@@ -291,7 +291,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         sourcePanelAction = cfg.sourcePanelAction;
 
         root = findViewById(R.id.root);
-        root.setBackgroundColor(cfg.backgroundColor);
+        // The mode's colour with a faint dot grid; a theme wallpaper, if any, draws over both.
+        root.setBackground(dotGrid(cfg.backgroundColor, 0x13FFFFFF));
         wallpaperPlayer = new WallpaperPlayer(this, root, cfg);
         sky = findViewById(R.id.sky);
         sky.setIntensity(cfg.skyIntensity);
@@ -301,6 +302,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // The glow is one bitmap, so its alpha can be applied while drawing it. Otherwise every frame of
         // a fade renders it into a full-screen offscreen buffer first.
         ambient.forceHasOverlappingRendering(false);
+        // The dot-matrix design has no colour glow behind the dock; only the cinematic shelf keeps it.
+        if (!cfg.cinematicHome) ambient.setVisibility(View.GONE);
         heroName = findViewById(R.id.heroName);
         hero = findViewById(R.id.hero);
         // The hero is now a group (name, and the cinematic lines): without this every fade of the default
@@ -308,14 +311,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         hero.forceHasOverlappingRendering(false);
         heroMeta = findViewById(R.id.heroMeta);
         heroDots = findViewById(R.id.heroDots);
+        heroSlot = findViewById(R.id.heroSlot);
+        heroSlotText = findViewById(R.id.heroSlotText);
         heroArt = findViewById(R.id.heroArt);
         cinematic = cfg.cinematicHome;
+        if (cinematic) heroSlot.setVisibility(View.GONE);
         if (cinematic) setUpCinematicShelf();
         // dock_title false: the name above the dock (and the cinematic lines under it) never shows; the glow
         // still follows the dock.
         if (!cfg.dockTitle) hero.setVisibility(View.GONE);
-        greeting = findViewById(R.id.greeting);
-        greetingColor = greeting.getCurrentTextColor();
         btnWifi = findViewById(R.id.btnWifi);
         shamsiDate = findViewById(R.id.shamsiDate);
         stats = findViewById(R.id.stats);
@@ -326,12 +330,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         raceSessions = findViewById(R.id.raceSessions);
         showStats = cfg.showStats;
         shamsi = cfg.shamsiDate;
-        greetingName = cfg.greetingName;
         if (shamsi) {
             shamsiDate.setVisibility(View.VISIBLE);
             TextView date = findViewById(R.id.date);
-            date.setTextSize(11f);
-            date.setPadding(0, (int) (4 * density), 0, 0);
         }
         vpnApp = cfg.vpnApp;
         moduleCards = cfg.moduleCards;
@@ -393,7 +394,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             public void onChildViewDetachedFromWindow(@NonNull View v) {
             }
         });
-        if (dockRow) grid.addItemDecoration(new DockDecoration(COLUMNS, density, cinematic));
+        if (dockRow) grid.addItemDecoration(new DockDecoration(COLUMNS, density));
         if (animations) {
             int enterAnim = reducedMotion ? R.anim.tile_enter_reduced : R.anim.tile_enter;
             float enterDelay = reducedMotion ? 0f : 0.06f;
@@ -472,6 +473,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         btnInputs = findViewById(R.id.btnInputs);
         View btnSettings = findViewById(R.id.btnSettings);
+        View btnMode = findViewById(R.id.btnMode);
         btnInputs.setOnClickListener(v -> showInputs());
         btnWifi.setOnClickListener(v -> openNetworkPill());
         btnWifi.setOnLongClickListener(v -> {
@@ -482,6 +484,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         btnReorder = findViewById(R.id.btnReorder);
         btnReorder.setOnClickListener(v -> toggleReorder());
         btnReorder.setVisibility(cfg.reorderButton ? View.VISIBLE : View.GONE);
+        setSegmentIcon((TextView) btnInputs, getDrawable(R.drawable.ic_input), true);
+        setSegmentIcon(btnWifi, getDrawable(R.drawable.ic_wifi), true);
+        setSegmentIcon((TextView) btnReorder, getDrawable(R.drawable.ic_swap_vert), true);
+        setSegmentIcon((TextView) btnSettings, getDrawable(R.drawable.ic_settings), true);
+        setSegmentIcon((TextView) btnMode, getDrawable(R.drawable.ic_mode), true);
         btnSettings.setOnLongClickListener(v -> {
             showSettingsMenu();
             return true;
@@ -499,8 +506,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 return true;
             }
             int firstButton = btnInputs.getVisibility() == View.VISIBLE ? R.id.btnInputs : R.id.btnWifi;
-            int leftButton = rtlMenuBar ? R.id.btnSettings : firstButton;
-            int rightButton = rtlMenuBar ? firstButton : R.id.btnSettings;
+            int leftButton = rtlMenuBar ? R.id.btnMode : firstButton;
+            int rightButton = rtlMenuBar ? firstButton : R.id.btnMode;
             if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) return v.getId() == leftButton;
             return keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && v.getId() == rightButton;
         };
@@ -508,13 +515,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         btnWifi.setOnKeyListener(pillKeys);
         btnSettings.setOnKeyListener(pillKeys);
         btnReorder.setOnKeyListener(pillKeys);
-        if (advancedEffects) {
-            for (View button : new View[]{btnInputs, btnWifi, btnReorder, btnSettings}) {
-                button.setOnFocusChangeListener((view, focused) -> view.animate()
-                        .scaleX(focused ? 1.04f : 1f).scaleY(focused ? 1.04f : 1f)
-                        .setDuration(160).start());
-            }
-        }
+        btnMode.setOnKeyListener(pillKeys);
         if (festive) applyFestiveSkin((TextView) btnInputs, (TextView) btnSettings);
 
         // Hide the glass when focus leaves the tiles.
@@ -589,7 +590,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             reloadApps(true);
         }
         rebuildOnResume = false;
-        updateGreeting();
+        updateShamsi();
         updateRace();
         updateWifiLabel();
         updateInputsButton();
@@ -1142,7 +1143,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private void showHero(int position, float dockTopInRoot) {
         String label = adapter.labelAt(position);
         int color = adapter.ambientColorAt(position);
-        float y = dockTopInRoot - 14 * density - 26 * density - hero.getHeight();
+        // Clear of the dock's dashed outline, which sits 14dp outside the tiles.
+        float y = dockTopInRoot - 14 * density - 16 * density - hero.getHeight();
         boolean changed = !label.contentEquals(heroName.getText());
         if (cinematic) showHeroArt(position);
 
@@ -1202,7 +1204,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** The shelf's text for this dock app: its name and, on the cinematic shelf, "Last opened" and the dots. */
     private void fillHero(int position, String label) {
         heroName.setText(label);
-        if (!cinematic) return;
+        if (!cinematic) {
+            heroSlotText.setText(getString(R.string.dock_slot, position + 1, Math.max(position + 1, adapter.dockFilled())));
+            return;
+        }
         updateHeroMeta(position);
         updateHeroDots(position);
     }
@@ -1759,24 +1764,45 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     // ---- top bar ---------------------------------------------------------------------------------
 
-    private void updateGreeting() {
-        int hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
-        int res;
-        if (hour < 5) res = R.string.good_night;
-        else if (hour < 12) res = R.string.good_morning;
-        else if (hour < 17) res = R.string.good_afternoon;
-        else if (hour < 22) res = R.string.good_evening;
-        else res = R.string.good_night;
-        String festiveGreeting = festive ? festival.greetingText() : "";
-        if (!festiveGreeting.isEmpty()) {
-            greeting.setText(festiveGreeting);
-            greeting.setTextColor(liftTowardsWhite(festival.accentColor(), 0.25f));
-        } else {
-            greeting.setText(greetingName.isEmpty() ? getString(res)
-                    : getString(R.string.greeting_with_name, getString(res), greetingName));
-            greeting.setTextColor(greetingColor);
-        }
+    private void updateShamsi() {
         if (shamsi) shamsiDate.setText(Shamsi.today());
+    }
+
+    /**
+     * A top-bar segment's icon at 17dp, tinted with the label (seg_text), and the accent dot after the label.
+     * Every segment reserves the dot's room, so focusing one never changes its width. A festive icon keeps its
+     * own colours and size ({@code tint} false); the icon-only reorder segment has no dot.
+     */
+    private void setSegmentIcon(TextView seg, Drawable icon, boolean tint) {
+        if (icon != null) {
+            icon = icon.mutate();
+            if (tint) {
+                int size = Math.round(17 * density);
+                icon.setTintList(getColorStateList(R.color.seg_text));
+                icon.setBounds(0, 0, size, size);
+            } else {
+                icon.setBounds(0, 0, icon.getIntrinsicWidth(), icon.getIntrinsicHeight());
+            }
+        }
+        Drawable dot = null;
+        if (seg != btnReorder) {
+            dot = getDrawable(R.drawable.seg_dot);
+            dot.setBounds(0, 0, dot.getIntrinsicWidth(), dot.getIntrinsicHeight());
+        }
+        // No view-wide compound tint: it would replace the icon's own tint and colour the dot too.
+        seg.setCompoundDrawablesRelative(icon, null, dot, null);
+    }
+
+    /** The background colour with a faint dot grid: 1.1dp dots every 12dp, one small tile repeated. */
+    private Drawable dotGrid(int background, int dotColor) {
+        int cell = Math.max(4, Math.round(12 * density));
+        Bitmap bmp = Bitmap.createBitmap(cell, cell, Bitmap.Config.ARGB_8888);
+        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        paint.setColor(dotColor);
+        new Canvas(bmp).drawCircle(cell / 2f, cell / 2f, 1.1f * density, paint);
+        BitmapDrawable dots = new BitmapDrawable(getResources(), bmp);
+        dots.setTileModeXY(Shader.TileMode.REPEAT, Shader.TileMode.REPEAT);
+        return new LayerDrawable(new Drawable[]{new ColorDrawable(background), dots});
     }
 
     // ---- race-weekend panel (a theme's race_calendar) -----------------------------------------------
@@ -1906,7 +1932,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             diya.setSteady(steady);
             diya.setFlame(flame);
         } else {
-            btnWifi.setCompoundDrawablesRelativeWithIntrinsicBounds(icon, 0, 0, 0);
+            setSegmentIcon(btnWifi, getDrawable(icon), true);
         }
     }
 
@@ -1930,10 +1956,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         addFocusAction(settings, marigold::turn);
     }
 
-    private static void setFestiveIcon(TextView pill, Drawable icon) {
-        // The pills tint their icons to follow focus; the festive ones keep their own colours.
-        pill.setCompoundDrawableTintList(null);
-        pill.setCompoundDrawablesRelativeWithIntrinsicBounds(icon, null, null, null);
+    private void setFestiveIcon(TextView pill, Drawable icon) {
+        // The segments tint their icons to follow focus; the festive ones keep their own colours.
+        setSegmentIcon(pill, icon, false);
     }
 
     /** Runs {@code action} when the view gains focus, keeping any focus listener it already had. */
@@ -1951,14 +1976,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         root.addView(shower, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         shower.play(60, 2200, () -> root.removeView(shower));
-    }
-
-    private static int liftTowardsWhite(int argb, float amount) {
-        int r = (argb >> 16) & 0xFF, g = (argb >> 8) & 0xFF, b = argb & 0xFF;
-        r += (int) ((255 - r) * amount);
-        g += (int) ((255 - g) * amount);
-        b += (int) ((255 - b) * amount);
-        return 0xFF000000 | (r << 16) | (g << 8) | b;
     }
 
     /** The network pill opens the VPN app when one is configured and installed, otherwise Wi-Fi settings. */

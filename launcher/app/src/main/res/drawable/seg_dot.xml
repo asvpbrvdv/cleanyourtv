@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The accent dot after a segment's label. Every segment reserves its room, so focus never changes a width. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true">
+        <layer-list>
+            <item android:left="2dp" android:width="5dp" android:height="5dp">
+                <shape android:shape="oval"><solid android:color="@color/dm_accent" /></shape>
+            </item>
+        </layer-list>
+    </item>
+    <item android:state_selected="true">
+        <layer-list>
+            <item android:left="2dp" android:width="5dp" android:height="5dp">
+                <shape android:shape="oval"><solid android:color="@color/dm_accent" /></shape>
+            </item>
+        </layer-list>
+    </item>
+    <item>
+        <layer-list>
+            <item android:left="2dp" android:width="5dp" android:height="5dp">
+                <shape android:shape="oval"><solid android:color="@android:color/transparent" /></shape>
+            </item>
+        </layer-list>
+    </item>
+</selector>

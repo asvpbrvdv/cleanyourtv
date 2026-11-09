@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Three accent pips under the focused dock tile. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:left="0dp" android:width="4dp" android:height="4dp">
+        <shape android:shape="oval"><solid android:color="@color/dm_accent" /></shape>
+    </item>
+    <item android:left="10dp" android:width="4dp" android:height="4dp">
+        <shape android:shape="oval"><solid android:color="@color/dm_accent" /></shape>
+    </item>
+    <item android:left="20dp" android:width="4dp" android:height="4dp">
+        <shape android:shape="oval"><solid android:color="@color/dm_accent" /></shape>
+    </item>
+</layer-list>

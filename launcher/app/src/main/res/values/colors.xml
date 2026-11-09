@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dot-matrix design, dark mode (docs/designs/dot-matrix). Code swaps these per mode at runtime. -->
+    <color name="dm_ink">#FFF2F2F2</color>
+    <color name="dm_ink_85">#D9F2F2F2</color>
+    <color name="dm_ink_60">#99F2F2F2</color>
+    <color name="dm_ink_55">#8CF2F2F2</color>
+    <color name="dm_ink_30">#4DF2F2F2</color>
+    <color name="dm_on_ink">#FF000000</color>
+    <color name="dm_accent">#FFD71921</color>
+</resources>

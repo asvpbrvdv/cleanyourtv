@@ -49,9 +49,10 @@
             android:visibility="gone" />
     </FrameLayout>
 
+    <!-- Under the focused grid tile: an accent dot, then the name in capitals. Width and top set in AppAdapter. -->
     <TextView
         android:id="@+id/name"
-        android:layout_width="180dp"
+        android:layout_width="wrap_content"
         android:layout_height="22dp"
         android:layout_gravity="center_horizontal|top"
         android:layout_marginTop="108dp"
@@ -60,8 +61,23 @@
         android:ellipsize="end"
         android:alpha="0"
         android:translationY="-6dp"
-        android:textColor="#F2FFFFFF"
-        android:textSize="14sp"
+        android:drawableStart="@drawable/name_dot"
+        android:drawablePadding="7dp"
+        android:textColor="@color/dm_ink"
+        android:textSize="11sp"
         android:fontFamily="@font/space_mono"
-        android:letterSpacing="0.02" />
+        android:letterSpacing="0.14"
+        android:textAllCaps="true" />
+
+    <!-- Under the focused dock tile: three accent pips. Top set in AppAdapter. -->
+    <View
+        android:id="@+id/pips"
+        android:layout_width="24dp"
+        android:layout_height="4dp"
+        android:layout_gravity="center_horizontal|top"
+        android:layout_marginTop="115dp"
+        android:alpha="0"
+        android:background="@drawable/dock_pips"
+        android:visibility="gone"
+        android:importantForAccessibility="no" />
 </FrameLayout>

@@ -5,14 +5,14 @@ import java.time.format.DateTimeParseException;
 import java.util.Locale;
 
 /**
- * A festive skin set by a theme's config.json: {@code festival}, {@code festival_until}, {@code greeting}
- * and {@code accent_color}. While it is active the pills get festive icons (a diya for the network, a bell
- * for Inputs, a marigold for Settings), the greeting is replaced and the focus glow takes the accent colour.
+ * A festive skin set by a theme's config.json: {@code festival}, {@code festival_until} and
+ * {@code accent_color}. While it is active the top bar gets festive icons (a diya for the network, a bell
+ * for Inputs, a marigold for Settings) and the focus ring takes the accent colour.
  * It switches itself off after {@code festival_until}, so nobody has to remember to undo it.
  */
 final class Festival {
 
-    static final Festival NONE = new Festival("", null, "", 0);
+    static final Festival NONE = new Festival("", null, 0);
 
     /** Warm diya gold, the accent when a theme names a festival but no colour. */
     static final int DEFAULT_ACCENT = 0xFFFFB23C;
@@ -21,15 +21,12 @@ final class Festival {
     final String name;
     /** Last day the skin shows, inclusive; null for no end date. */
     final LocalDate until;
-    /** Text that replaces the time-of-day greeting; "" uses the festival's own default. */
-    final String greeting;
     /** Focus glow colour as 0xAARRGGBB, or 0 for {@link #DEFAULT_ACCENT}. */
     final int accent;
 
-    private Festival(String name, LocalDate until, String greeting, int accent) {
+    private Festival(String name, LocalDate until, int accent) {
         this.name = name;
         this.until = until;
-        this.greeting = greeting;
         this.accent = accent;
     }
 
@@ -37,7 +34,7 @@ final class Festival {
      * Builds the skin from raw config values. Anything malformed turns the skin off rather than leaving a
      * festival on the screen forever: an unreadable end date or an empty name gives {@link #NONE}.
      */
-    static Festival parse(String name, String until, String greeting, String accent) {
+    static Festival parse(String name, String until, String accent) {
         String n = name == null ? "" : name.trim().toLowerCase(Locale.ROOT);
         if (n.isEmpty() || n.length() > 40) return NONE;
         LocalDate end = null;
@@ -48,26 +45,12 @@ final class Festival {
                 return NONE;
             }
         }
-        String g = greeting == null ? "" : Cards.cleanLabel(greeting, "");
-        return new Festival(n, end, g, parseColor(accent));
+        return new Festival(n, end, parseColor(accent));
     }
 
     /** Whether the skin shows today. */
     boolean active(LocalDate today) {
         return !name.isEmpty() && (until == null || !today.isAfter(until));
-    }
-
-    /** The greeting to show while active, or "" to keep the normal time-of-day greeting. */
-    String greetingText() {
-        if (!greeting.isEmpty()) return greeting;
-        switch (name) {
-            case "dussehra":
-                return "Happy Dussehra";
-            case "diwali":
-                return "Happy Diwali";
-            default:
-                return "";
-        }
     }
 
     int accentColor() {

@@ -1,5 +1,6 @@
 package com.gathin.tvhome;
 
+import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
@@ -14,6 +15,7 @@ import android.graphics.Color;
 import android.graphics.Outline;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.provider.Settings;
 import android.util.DisplayMetrics;
@@ -88,7 +90,10 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         }
     }
 
+    /** Room the focus zoom needs around a tile (tileWidthPx); the zoom itself is {@link #ZOOM}. */
     static final float FOCUS_SCALE = 1.10f;
+    /** The focused tile's zoom (dot-matrix design: 1.08 with a 2dp ink ring around it). */
+    static final float ZOOM = 1.08f;
     /** Design size of a tile (dp); tiles shrink from here when the columns don't fit, see tileWidthPx. */
     static final float DESIGN_W_DP = 180f, DESIGN_H_DP = 101f;
 
@@ -132,8 +137,11 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     static final float DOCK_EXTRA_DP = 6 + 12;
     /** Room kept under the last row rows_below_dock asks for (MainActivity places the dock with the same). */
     static final float BOTTOM_ROOM_DP = 30;
-    /** Room kept above the dock for the dock title (48sp hero name plus its 40dp gap) when dock_title is on. */
-    static final float TITLE_ROOM_DP = 104;
+    /**
+     * Room kept above the dock for the dock title when dock_title is on: the 64sp Doto name (77dp without font
+     * padding), the 10dp gap and the 16dp slot line, and the 30dp to the tiles (MainActivity.showHero).
+     */
+    static final float TITLE_ROOM_DP = 134;
     /** dock_row false: room above the first row for its zoom and glass (MainActivity places the grid with it). */
     static final float TOP_ROOM_DP = 12;
 
@@ -363,9 +371,15 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         cardLp.width = w;
         cardLp.height = h;
         card.setLayoutParams(cardLp);
-        View name = v.findViewById(R.id.name);
+        // A faint 1dp outline on every tile; the focused one gets the ink ring (GlassView) around it as well.
+        GradientDrawable outline = new GradientDrawable();
+        outline.setCornerRadius(cornerRadius(w, density));
+        outline.setStroke(Math.max(1, Math.round(density)), 0x24FFFFFF);
+        card.setForeground(outline);
+        TextView name = v.findViewById(R.id.name);
+        // Wraps its text so the accent dot sits right before the name; a long name ellipsizes a little wider than the tile.
+        name.setMaxWidth(w + Math.round(40 * density));
         ViewGroup.MarginLayoutParams nameLp = (ViewGroup.MarginLayoutParams) name.getLayoutParams();
-        nameLp.width = w;
         nameLp.topMargin = h + Math.round((dockRow ? 7 : 4) * density);
         if (!dockRow) {
             // Compact spacing (COMPACT_ITEM_EXTRA_DP): 4dp item padding and a 20dp name instead of 8dp and 22dp.
@@ -374,6 +388,11 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             v.setPadding(v.getPaddingLeft(), pad, v.getPaddingRight(), pad);
         }
         name.setLayoutParams(nameLp);
+        View pips = v.findViewById(R.id.pips);
+        ViewGroup.MarginLayoutParams pipsLp = (ViewGroup.MarginLayoutParams) pips.getLayoutParams();
+        // Below the dock's dashed outline (14dp outside the tile), as in the sketch.
+        pipsLp.topMargin = h + Math.round(24 * density);
+        pips.setLayoutParams(pipsLp);
         return new Holder(v, listener, animations, advancedEffects, reducedMotion);
     }
 
@@ -387,6 +406,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             h.card.setVisibility(View.INVISIBLE);
             h.card.setFocusable(false);
             h.name.setVisibility(View.INVISIBLE);
+            h.pips.setVisibility(View.GONE);
             h.banner.setImageDrawable(null);
             h.icon.setImageDrawable(null);
             h.card.setOnClickListener(null);
@@ -396,9 +416,14 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         h.card.setVisibility(View.VISIBLE);
         h.card.setFocusable(true);
         h.name.setText(e.name);
-        h.name.setVisibility(dockRow && position < dockSize ? View.INVISIBLE : View.VISIBLE);   // the dock has no labels
+        boolean inDock = dockRow && position < dockSize;
+        h.name.setVisibility(inDock ? View.INVISIBLE : View.VISIBLE);   // the dock has no labels, but pips
+        h.pips.setVisibility(inDock ? View.VISIBLE : View.GONE);
         boolean focused = h.card.isFocused();   // a rebind after reload() can hit the focused tile
         h.name.setAlpha(focused ? 1f : 0f);
+        h.pips.setAlpha(focused ? 1f : 0f);
+        if (h.tint != null) h.tint.cancel();
+        TileTint.set(focused ? 1f : 0f, h.banner, h.icon);
         h.card.setScaleX(focused && animations ? focusScale() : 1f);
         h.card.setScaleY(focused && animations ? focusScale() : 1f);
         h.card.setTranslationY(focused && advancedEffects ? -4f * ctx.getResources().getDisplayMetrics().density : 0f);
@@ -563,7 +588,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     }
 
     float focusScale() {
-        return !animations ? 1f : advancedEffects ? 1.12f : 1.10f;
+        return animations ? ZOOM : 1f;
     }
 
     /** A vivid colour sampled from the app's banner (or icon), cached per entry; a card's accent when it set one. */
@@ -619,9 +644,9 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         return Color.HSVToColor(hsv);
     }
 
-    /** Corner radius for a tile of this width: 16dp at the design width, proportionally less when smaller. */
+    /** Corner radius for a tile of this width: 14dp at the design width, proportionally less when smaller. */
     static float cornerRadius(int tileWidthPx, float density) {
-        return 16f * density * Math.min(1f, tileWidthPx / (DESIGN_W_DP * density));
+        return 14f * density * Math.min(1f, tileWidthPx / (DESIGN_W_DP * density));
     }
 
     static final class Holder extends RecyclerView.ViewHolder {
@@ -630,6 +655,9 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         final ImageView icon;
         final TextView label;
         final TextView name;
+        final View pips;
+        /** The running grey-to-colour fade, if any. */
+        ValueAnimator tint;
         final boolean animations;
         final boolean advancedEffects;
         final boolean reducedMotion;
@@ -642,6 +670,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             icon = v.findViewById(R.id.icon);
             label = v.findViewById(R.id.label);
             name = v.findViewById(R.id.name);
+            pips = v.findViewById(R.id.pips);
             this.animations = animations;
             this.advancedEffects = advancedEffects;
             this.reducedMotion = reducedMotion;
@@ -650,7 +679,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             card.setOutlineProvider(new ViewOutlineProvider() {
                 @Override
                 public void getOutline(View view, Outline outline) {
-                    // 16dp at the design width, scaled down with the tile so small tiles keep the same shape.
+                    // 14dp at the design width, scaled down with the tile so small tiles keep the same shape.
                     outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), cornerRadius(view.getWidth(), density));
                 }
             });
@@ -668,9 +697,14 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                 view.animate().cancel();
                 banner.animate().cancel();
                 name.animate().cancel();
-                float scale = !animations ? 1f : advancedEffects ? 1.12f : 1.10f;
-                float s = focused ? scale : 1f;
+                pips.animate().cancel();
+                if (tint != null) tint.cancel();
+                tint = null;
+                float s = focused && animations ? ZOOM : 1f;
+                if (!animations) TileTint.set(focused ? 1f : 0f, banner, icon);
+                else tint = TileTint.animate(focused, reducedMotion ? 100 : 220, banner, icon);
                 if (!animations) {
+                    pips.setAlpha(focused ? 1f : 0f);
                     view.setScaleX(1f);
                     view.setScaleY(1f);
                     view.setTranslationY(0f);
@@ -687,6 +721,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                             .setInterpolator(new DecelerateInterpolator())
                             .withLayer().start();
                     name.animate().alpha(focused ? 1f : 0f).setDuration(100).start();
+                    pips.animate().alpha(focused ? 1f : 0f).setDuration(100).start();
                     // Same place as the full motion's slide ends: the layout's -6dp is only its starting point, and
                     // left there the name overlaps the zoomed tile.
                     // Only on focus: snapping it back to -6dp while it fades out would jump it up over the tile.
@@ -705,6 +740,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                     name.animate().alpha(focused ? 1f : 0f)
                             .translationY(focused ? density * 4f : -density * 6f)
                             .setDuration(220).start();
+                    pips.animate().alpha(focused ? 1f : 0f).setDuration(focused ? 220 : 120).start();
                 }
                 int pos = getBindingAdapterPosition();
                 if (focused && listener != null && pos != RecyclerView.NO_POSITION) {

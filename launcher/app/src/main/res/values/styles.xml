@@ -26,12 +26,32 @@
     </style>
     <style name="TopButton" parent="TopButtonBase" />
 
-    <!-- Icon-only pill: a 42dp circle (pill_bg's 21dp corners) with the 22dp icon centred by even padding. Give it a
-         contentDescription, since there is no text. -->
-    <style name="TopButtonIcon" parent="TopButtonBase">
-        <item name="android:layout_width">42dp</item>
+
+    <!-- Dot-matrix top bar: one outlined bar (seg_bar) holding these segments. Icons (17dp) and the accent dot
+         after the label are set in code (MainActivity.styleSegment). -->
+    <style name="Segment">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">match_parent</item>
+        <item name="android:paddingStart">12dp</item>
+        <item name="android:paddingEnd">13dp</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:background">@drawable/seg_bg</item>
+        <item name="android:textColor">@color/seg_text</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:fontFamily">@font/space_mono</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:letterSpacing">0.1</item>
+        <item name="android:singleLine">true</item>
+        <item name="android:includeFontPadding">false</item>
+        <item name="android:drawablePadding">8dp</item>
+        <item name="android:focusable">true</item>
+        <item name="android:clickable">true</item>
+    </style>
+
+    <!-- Icon-only segment (the optional reorder button). Give it a contentDescription. -->
+    <style name="SegmentIcon" parent="Segment">
         <item name="android:paddingStart">10dp</item>
-        <item name="android:paddingEnd">10dp</item>
+        <item name="android:paddingEnd">8dp</item>
         <item name="android:drawablePadding">0dp</item>
     </style>
 

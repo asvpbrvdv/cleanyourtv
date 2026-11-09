@@ -10,7 +10,7 @@ public class TileFitTest {
 
     private static final float D = 2f;              // 1080p TV: 2 px per dp
     private static final int INNER = 1696;          // grid width minus padding at 1920 px
-    private static final int GRID_H = 846;          // grid height under the top bar
+    private static final int GRID_H = 928;          // grid height under the 40dp top bar: 540 - 26 - 40 - 10 dp
 
     private static int height(int tileW, int rows, boolean title) {
         int itemH = AppAdapter.itemHeightPx(AppAdapter.tileHeightPx(tileW), D);

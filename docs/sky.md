@@ -24,7 +24,7 @@ opacity, 0 to 100; the colours themselves are interpolated between a handful of 
 day, which is what makes it drift instead of switching at fixed hours.
 
 It sits behind everything, over the wallpaper when there is one, and the palette was chosen dark on
-purpose: the white clock, the greeting, the hero name and the dock band all keep their contrast at
+purpose: the white clock, the hero name and the dock outline all keep their contrast at
 the default 60.
 
 ## Cost
