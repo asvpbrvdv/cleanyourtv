@@ -1,0 +1,8 @@
+[Unit]
+Description=Update the TV remote from GitHub
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/tv-remote-update
