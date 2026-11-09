@@ -1,50 +1,75 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- A popup row (Inputs, the Settings menu, quick settings): icon, name, then the port in small type, and the
+     status on the right. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="42dp"
     android:orientation="horizontal"
     android:gravity="center_vertical"
-    android:paddingStart="12dp"
-    android:paddingEnd="12dp"
-    android:background="@drawable/input_row_bg"
+    android:paddingStart="14dp"
+    android:paddingEnd="14dp"
+    android:background="@drawable/dm_row_bg"
     android:focusable="true"
     android:clickable="true">
 
     <ImageView
         android:id="@+id/icon"
-        android:layout_width="20dp"
-        android:layout_height="20dp"
-        android:tint="@drawable/pill_text"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
+        android:layout_marginEnd="12dp"
+        android:tint="@color/dm_row_icon"
         android:duplicateParentState="true"
         android:contentDescription="@null" />
 
     <TextView
         android:id="@+id/title"
-        android:layout_width="0dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:layout_marginStart="10dp"
-        android:layout_marginEnd="12dp"
-        android:textColor="@drawable/pill_text"
+        android:textColor="@color/dm_row_text"
         android:duplicateParentState="true"
-        android:textSize="15sp"
+        android:textSize="12sp"
         android:fontFamily="@font/space_mono"
+        android:letterSpacing="0.1"
+        android:textAllCaps="true"
+        android:ellipsize="end"
         android:singleLine="true" />
+
+    <TextView
+        android:id="@+id/port"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:textColor="@color/dm_row_dim"
+        android:duplicateParentState="true"
+        android:textSize="10sp"
+        android:fontFamily="@font/space_mono"
+        android:letterSpacing="0.1"
+        android:textAllCaps="true"
+        android:singleLine="true"
+        android:visibility="gone" />
+
+    <View
+        android:layout_width="0dp"
+        android:layout_height="1dp"
+        android:layout_weight="1"
+        android:minWidth="12dp" />
 
     <View
         android:id="@+id/dot"
         android:layout_width="7dp"
         android:layout_height="7dp"
-        android:layout_marginEnd="8dp"
-        android:background="@drawable/status_dot" />
+        android:layout_marginEnd="7dp"
+        android:duplicateParentState="true"
+        android:background="@drawable/status_on" />
 
     <TextView
         android:id="@+id/status"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textColor="@drawable/pill_text_dim"
+        android:textColor="@color/dm_row_dim"
         android:duplicateParentState="true"
-        android:textSize="11sp"
+        android:textSize="10sp"
         android:fontFamily="@font/space_mono"
-        android:letterSpacing="0.04" />
+        android:letterSpacing="0.14"
+        android:textAllCaps="true" />
 </LinearLayout>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Secondary text in a popup row (port, status): 60 % ink, or the text-on-ink colour at 70 % when focused. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true" android:color="#B3000000" />
+    <item android:color="@color/dm_ink_60" />
+</selector>

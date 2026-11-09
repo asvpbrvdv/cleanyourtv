@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Inputs: a device is connected (filled dot). -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true">
+        <shape android:shape="oval"><solid android:color="#B3000000" /></shape>
+    </item>
+    <item>
+        <shape android:shape="oval"><solid android:color="@color/dm_ink_60" /></shape>
+    </item>
+</selector>

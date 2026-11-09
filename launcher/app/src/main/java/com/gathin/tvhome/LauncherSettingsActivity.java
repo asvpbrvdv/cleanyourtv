@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -19,10 +20,13 @@ public final class LauncherSettingsActivity extends Activity {
     private SharedPreferences choices;
     private final TextView[] columnChoices = new TextView[4];
     private final TextView[] rowChoices = new TextView[4];
-    private TextView wallpaperChoice;
-    private TextView animationsChoice;
-    private TextView advancedChoice;
-    private TextView followThemeChoice;
+    private View wallpaperChoice;
+    private View animationsChoice;
+    private View advancedChoice;
+    private View followThemeChoice;
+    private TextView wallpaperValue;
+    private TextView animationsValue;
+    private TextView advancedValue;
     private int columns;
     private int rowsBelowDock;
     private boolean animations;
@@ -32,6 +36,11 @@ public final class LauncherSettingsActivity extends Activity {
     protected void onCreate(Bundle state) {
         super.onCreate(state);
         setContentView(R.layout.activity_launcher_settings);
+        findViewById(R.id.settingsRoot).setBackground(
+                DotMatrix.background(this, DotMatrix.BACKGROUND, DotMatrix.GRID_DOT));
+        wallpaperValue = findViewById(R.id.wallpaperValue);
+        animationsValue = findViewById(R.id.animationsValue);
+        advancedValue = findViewById(R.id.advancedValue);
         choices = getSharedPreferences(Config.SETTINGS_NAME, MODE_PRIVATE);
         Config config = Config.load(this);
         columns = config.columns;
@@ -180,18 +189,29 @@ public final class LauncherSettingsActivity extends Activity {
         for (int i = 0; i < rowChoices.length; i++) {
             rowChoices[i].setSelected(rowsBelowDock == i);
         }
-        animationsChoice.setText(getString(R.string.animations_state,
-                getString(animations ? R.string.on : R.string.off)));
-        advancedChoice.setText(getString(R.string.advanced_effects_state,
-                getString(advancedEffects ? R.string.on : R.string.off)));
+        setSwitch(animationsValue, animations);
+        setSwitch(advancedValue, advancedEffects);
         advancedChoice.setEnabled(animations);
         advancedChoice.setAlpha(animations ? 1f : 0.5f);
         String wallpaperCurrent = choices.getString(Config.WALLPAPER_CHOICE_KEY, null);
-        wallpaperChoice.setText(getString(R.string.wallpaper_state,
-                "none".equals(wallpaperCurrent) ? getString(R.string.wallpaper_none)
-                        : wallpaperCurrent != null ? wallpaperCurrent
-                        : getString(R.string.wallpaper_theme_default)));
+        boolean noWallpaper = "none".equals(wallpaperCurrent);
+        wallpaperValue.setText(noWallpaper ? getString(R.string.off)
+                : wallpaperCurrent != null ? wallpaperCurrent
+                : getString(R.string.wallpaper_theme_default));
+        // The dot only when a picture is actually shown (a theme default with no wallpaper file shows none).
+        Config shown = Config.load(this);
+        setDot(wallpaperValue, !noWallpaper && (shown.wallpaper != null || !shown.wallpapers.isEmpty()));
         followThemeChoice.setSelected(!hasOnTvChoices());
+    }
+
+    /** ON with an accent dot before it, or OFF. */
+    private void setSwitch(TextView value, boolean on) {
+        value.setText(on ? R.string.on : R.string.off);
+        setDot(value, on);
+    }
+
+    private void setDot(TextView value, boolean on) {
+        value.setCompoundDrawablesRelativeWithIntrinsicBounds(on ? getDrawable(R.drawable.name_dot) : null, null, null, null);
     }
 
     private boolean hasOnTvChoices() {

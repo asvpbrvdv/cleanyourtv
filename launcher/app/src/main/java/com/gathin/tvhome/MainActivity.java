@@ -23,7 +23,6 @@ import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
-import android.graphics.drawable.LayerDrawable;
 import android.media.tv.TvContract;
 import android.media.tv.TvInputInfo;
 import android.media.tv.TvInputManager;
@@ -292,7 +291,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         root = findViewById(R.id.root);
         // The mode's colour with a faint dot grid; a theme wallpaper, if any, draws over both.
-        root.setBackground(dotGrid(cfg.backgroundColor, 0x13FFFFFF));
+        root.setBackground(DotMatrix.background(this, cfg.backgroundColor, DotMatrix.GRID_DOT));
         wallpaperPlayer = new WallpaperPlayer(this, root, cfg);
         sky = findViewById(R.id.sky);
         sky.setIntensity(cfg.skyIntensity);
@@ -1793,18 +1792,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         seg.setCompoundDrawablesRelative(icon, null, dot, null);
     }
 
-    /** The background colour with a faint dot grid: 1.1dp dots every 12dp, one small tile repeated. */
-    private Drawable dotGrid(int background, int dotColor) {
-        int cell = Math.max(4, Math.round(12 * density));
-        Bitmap bmp = Bitmap.createBitmap(cell, cell, Bitmap.Config.ARGB_8888);
-        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        paint.setColor(dotColor);
-        new Canvas(bmp).drawCircle(cell / 2f, cell / 2f, 1.1f * density, paint);
-        BitmapDrawable dots = new BitmapDrawable(getResources(), bmp);
-        dots.setTileModeXY(Shader.TileMode.REPEAT, Shader.TileMode.REPEAT);
-        return new LayerDrawable(new Drawable[]{new ColorDrawable(background), dots});
-    }
-
     // ---- race-weekend panel (a theme's race_calendar) -----------------------------------------------
 
     private static final int RACE_RED = 0xFFFF3B2F;
@@ -2078,13 +2065,20 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             openSourcePanel();
             return;
         }
-        View anchor = findViewById(R.id.btnInputs);
+        // The panel hangs 10dp under the whole bar, its left edge on the bar's; the Inputs segment stays
+        // filled (selected) while it is open.
+        View anchor = findViewById(R.id.topButtons);
+        View inputsSegment = findViewById(R.id.btnInputs);
         View panel = getLayoutInflater().inflate(R.layout.popup_inputs, root, false);
         LinearLayout rows = panel.findViewById(R.id.rows);
 
-        // Compact: as wide as the Inputs pill (a touch wider so "HDMI 1" fits), hanging right below it.
-        int width = Math.max(anchor.getWidth(), (int) (150 * density));
+        int width = (int) (300 * density);
         final PopupWindow popup = glassPopup(panel, width);
+        inputsSegment.setSelected(true);
+        popup.setOnDismissListener(() -> {
+            if (openPopup == popup) openPopup = null;
+            inputsSegment.setSelected(false);
+        });
 
         TvInputManager tim = (TvInputManager) getSystemService(TV_INPUT_SERVICE);
         boolean sawNonHdmi = false;
@@ -2203,13 +2197,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             addInputRow(rows, popup, R.drawable.ic_livetv, getString(R.string.live_tv), -1, () -> open(liveTvIntent));
         }
         if (rows.getChildCount() == 0) {
+            inputsSegment.setSelected(false);
+            openPopup = null;
             Toast.makeText(this, R.string.no_inputs, Toast.LENGTH_SHORT).show();
             return;
         }
 
         // Fit the widest row: TVs that report a status on every port (Sony) would otherwise squeeze the names out.
         panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-        popup.setWidth(Math.max(width, Math.min(panel.getMeasuredWidth(), (int) (360 * density))));
+        popup.setWidth(Math.max(width, Math.min(panel.getMeasuredWidth(), (int) (400 * density))));
 
         int alignment = getResources().getBoolean(R.bool.rtl_menu_bar) ? Gravity.END : Gravity.START;
         dropIn(popup, panel, anchor, alignment);
@@ -2242,7 +2238,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private void addSeparator(LinearLayout rows) {
         View line = new View(this);
-        line.setBackgroundColor(0x1FFFFFFF);
+        line.setBackgroundColor(0x26F2F2F2);   // ink at 15 %
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (int) density);
         int m = (int) (6 * density), h = (int) (12 * density);
         lp.setMargins(h, m, h, m);
@@ -2252,17 +2248,25 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private void addInputRow(LinearLayout rows, PopupWindow popup, int iconRes, String title, int state, Runnable action) {
         View row = getLayoutInflater().inflate(R.layout.item_input, rows, false);
         ((ImageView) row.findViewById(R.id.icon)).setImageResource(iconRes);
+        // "Switch 2 · HDMI 4": the name, then the port in small type after it.
+        int split = title.lastIndexOf(" \u00B7 ");
+        if (split > 0) {
+            TextView port = row.findViewById(R.id.port);
+            port.setText(title.substring(split + 3));
+            port.setVisibility(View.VISIBLE);
+            title = title.substring(0, split);
+        }
         ((TextView) row.findViewById(R.id.title)).setText(title);
         TextView status = row.findViewById(R.id.status);
         View dot = row.findViewById(R.id.dot);
         // This TV reports "standby" for every port whether or not something is plugged in, so only
-        // definite states are shown.
+        // definite states are shown: a filled dot for a device, a hollow ring for an empty port.
         if (state == TvInputManager.INPUT_STATE_CONNECTED) {
             status.setText(R.string.connected);
-            dot.setVisibility(View.VISIBLE);
+            dot.setBackgroundResource(R.drawable.status_on);
         } else if (state == TvInputManager.INPUT_STATE_DISCONNECTED) {
             status.setText(R.string.not_connected);
-            dot.setVisibility(View.GONE);
+            dot.setBackgroundResource(R.drawable.status_off);
         } else {
             status.setVisibility(View.GONE);
             dot.setVisibility(View.GONE);

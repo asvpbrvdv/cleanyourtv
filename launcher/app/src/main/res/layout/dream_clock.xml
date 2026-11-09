@@ -1,19 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Screensaver (ClockDream): clock and date that drift around a black screen over an ambient glow. -->
+<!-- Screensaver (ClockDream): a large dotted clock and the date on black, drifting once a minute so nothing
+     burns in. No glow. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/dreamRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#FF000000">
-
-    <View
-        android:id="@+id/dreamAmbient"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
 
     <LinearLayout
         android:id="@+id/dreamContent"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:gravity="center_horizontal"
         android:orientation="vertical">
 
         <LinearLayout
@@ -23,41 +21,57 @@
             android:baselineAligned="true">
 
             <TextClock
+                android:id="@+id/dreamTime"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:format12Hour="h:mm"
                 android:format24Hour="HH:mm"
-                android:textColor="#E6FFFFFF"
+                android:textColor="@color/dm_ink"
                 android:textSize="120sp"
                 android:fontFamily="@font/doto"
-                android:textAllCaps="true"
-                android:letterSpacing="-0.04"
+                android:letterSpacing="0.04"
                 android:includeFontPadding="false" />
 
             <TextClock
+                android:id="@+id/dreamAmpm"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="10dp"
                 android:format12Hour="a"
                 android:format24Hour=""
-                android:textColor="#99FFFFFF"
-                android:textSize="22sp"
+                android:textColor="@color/dm_ink_60"
+                android:textSize="18sp"
                 android:fontFamily="@font/space_mono"
-                android:letterSpacing="0.08"
+                android:letterSpacing="0.16"
                 android:textAllCaps="true" />
         </LinearLayout>
 
-        <TextClock
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
-            android:layout_marginTop="4dp"
-            android:format12Hour="@string/date_format"
-            android:format24Hour="@string/date_format"
-            android:textColor="#8CFFFFFF"
-            android:textSize="18sp"
-            android:fontFamily="@font/space_mono"
-            android:letterSpacing="0.14"
-            android:textAllCaps="true" />
+            android:layout_marginTop="14dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <View
+                android:id="@+id/dreamDot"
+                android:layout_width="6dp"
+                android:layout_height="6dp"
+                android:layout_marginEnd="12dp"
+                android:background="@drawable/name_dot" />
+
+            <TextClock
+                android:id="@+id/dreamDate"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:format12Hour="@string/date_format_home"
+                android:format24Hour="@string/date_format_home"
+                android:textColor="@color/dm_ink_60"
+                android:textSize="16sp"
+                android:fontFamily="@font/space_mono"
+                android:letterSpacing="0.2"
+                android:textAllCaps="true"
+                android:includeFontPadding="false" />
+        </LinearLayout>
     </LinearLayout>
 </FrameLayout>
