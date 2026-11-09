@@ -26,7 +26,6 @@ The page only answers on 127.0.0.1 unless --lan is given: anyone who can reach i
 on the TV without knowing the key.
 """
 import argparse
-import html
 import json
 import os
 import plistlib
@@ -194,10 +193,10 @@ PAGE = """<!doctype html>
 <style>
 :root{color-scheme:dark;--bg:#0b0c0f;--pad:#1a1c22;--key:#262931;--key-hi:#353945;--text:#eef0f4;--dim:#8a8f9c;
  --accent:#cfffcf;--red:#e5484d;--red-hi:#f2555a;--green:#46c46e;--err:#ff8a8a;--line:#262931;
- --letter:#353945;--mod:#262931;--ok:#353945;--shadow:none}
+ --letter:#353945;--mod:#262931;--ok:#353945;--ok-hi:#454a58;--shadow:none}
 :root[data-theme="light"]{color-scheme:light;--bg:#f2f3f6;--pad:#e2e5ea;--key:#ffffff;--key-hi:#eceef2;
  --text:#15181e;--dim:#6b7180;--red:#e0393f;--red-hi:#ec474d;--green:#239a4c;--err:#c8282e;--line:#d3d7de;
- --letter:#ffffff;--mod:#c5cad3;--ok:#ffffff;--shadow:0 1px 2px rgba(21,24,30,.12)}
+ --letter:#ffffff;--mod:#c5cad3;--ok:#ffffff;--ok-hi:#eceef2;--shadow:0 1px 2px rgba(21,24,30,.12)}
 *{box-sizing:border-box}
 body{margin:0;min-height:100vh;display:flex;justify-content:center;align-items:flex-start;
  background:var(--bg);color:var(--text);font:15px/1.3 -apple-system,BlinkMacSystemFont,"Inter",sans-serif}
@@ -215,7 +214,7 @@ button:active{transform:scale(.96)}
  border-radius:50%;padding:18px;aspect-ratio:1;margin:16px 0}
 .pad button{border-radius:50%;font-size:20px;padding:0}
 .pad .ok{background:var(--ok);font-size:15px;font-weight:600}
-.pad .ok:hover{background:var(--key-hi)}
+.pad .ok:hover{background:var(--ok-hi)}
 h2{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin:18px 0 6px}
 #inputs{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
 #inputs button.off{color:var(--dim)}
@@ -228,12 +227,6 @@ button.power:hover{background:var(--red-hi)}
 button.kbd.on{background:var(--text);color:var(--bg)}
 button.mute.on{background:var(--red);color:#fff}
 button.mute.on:hover{background:var(--red-hi)}
-#copy{display:block;width:100%;margin:22px 0 0;padding:12px;text-align:left;background:none;box-shadow:none;
- border:1px solid var(--line);color:var(--dim)}
-#copy:hover{background:var(--pad)}
-#copy .label{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;letter-spacing:.04em;margin-bottom:6px}
-#copy .label svg{width:15px;height:15px}
-#copy code{display:block;font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;overflow-wrap:anywhere;opacity:.85}
 /* phone-style keyboard */
 #keyboard{grid-column:1;grid-row:1;justify-self:end;width:100%;max-width:348px;padding-right:28px;margin-top:10px}
 #keyboard[hidden]{display:none}
@@ -277,8 +270,6 @@ button.mute.on:hover{background:var(--red-hi)}
 <div class="row"><button data-k="voldown" aria-label="Volume down">Vol &minus;</button><button class="mute" data-k="mute" aria-label="Mute"></button><button data-k="volup" aria-label="Volume up">Vol +</button></div>
 <h2>Inputs</h2><div id="inputs"><span style="color:var(--dim)">Loading&hellip;</span></div>
 <div id="status"></div>
-<button id="copy" title="Click to copy"><span class="label">Copy and paste into Terminal<svg viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg></span>
-<code>__COMMAND__</code></button>
 </main></div><script>
 const SUN = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>';
 const MOON = '<svg viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>';
@@ -328,15 +319,6 @@ async function press(k) {
   if (typing && ["up", "down", "left", "right", "ok", "back"].includes(k)) setTimeout(pollField, 500);
 }
 syncMute(); window.addEventListener("focus", syncMute);
-const copy = document.getElementById("copy"), label = copy.querySelector(".label").firstChild;
-copy.addEventListener("click", async () => {
-  const text = copy.querySelector("code").textContent;
-  try { await navigator.clipboard.writeText(text); } catch (e) {
-    const t = document.createElement("textarea"); t.value = text; document.body.appendChild(t);
-    t.select(); document.execCommand("copy"); t.remove();
-  }
-  label.textContent = "Copied"; setTimeout(() => label.textContent = "Copy and paste into Terminal", 1500);
-});
 document.querySelectorAll("[data-k]").forEach(b => b.addEventListener("click", () => press(b.dataset.k)));
 
 // Keyboard mode. The TV's field is the truth: while nothing is typed, the page reads it about once a
@@ -467,7 +449,7 @@ def tv_error_text(tv, e):
     return str(e)
 
 
-def make_handler(tv, lan, command=""):
+def make_handler(tv, lan):
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *args):
             pass
@@ -494,7 +476,7 @@ def make_handler(tv, lan, command=""):
             if not self.allowed():
                 return self.reply(403, "Forbidden")
             if self.path == "/":
-                return self.reply(200, PAGE.replace("__COMMAND__", html.escape(command)), "text/html; charset=utf-8")
+                return self.reply(200, PAGE, "text/html; charset=utf-8")
             if self.path == "/text":
                 try:
                     active, text = tv.text()
@@ -546,19 +528,6 @@ def make_handler(tv, lan, command=""):
             self.reply(204, "")
 
     return Handler
-
-
-def start_command(host, psk, args):
-    """The line that starts this remote again, shown on the page to copy."""
-    repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    home = os.path.expanduser("~")
-    if repo.startswith(home + os.sep):
-        repo = "~/" + shlex.quote(repo[len(home) + 1:])
-    else:
-        repo = shlex.quote(repo)
-    flags = (" --lan" if args.lan else "") + (f" --port {args.port}" if args.port != 8765 else "")
-    return (f"cd {repo} && TV_HOST={shlex.quote(host)} TV_PSK={shlex.quote(psk)} "
-            f"python3 tools/sony-remote.py{flags}")
 
 
 APP_ID = "tv.cleanyour.remote"
@@ -671,7 +640,7 @@ def main():
         return
     tv = Tv(host, psk)
     server = ThreadingHTTPServer(("0.0.0.0" if args.lan else "127.0.0.1", args.port),
-                                 make_handler(tv, args.lan, start_command(host, psk, args)))
+                                 make_handler(tv, args.lan))
     url = f"http://127.0.0.1:{server.server_address[1]}"
     print(f"Remote for {host} at {url}" + ("  (and on this computer's IP from your phone)" if args.lan else ""))
     print("Ctrl+C to stop.")

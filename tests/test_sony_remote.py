@@ -93,7 +93,7 @@ class SonyRemoteTest(unittest.TestCase):
         self.tv_server = serve(ThreadingHTTPServer(("127.0.0.1", 0), FakeTv))
         self.tv = remote.Tv(f"127.0.0.1:{self.tv_server.server_address[1]}", PSK)
         self.page = serve(ThreadingHTTPServer(("127.0.0.1", 0),
-                                              remote.make_handler(self.tv, lan=False, command="cd ~/x && <run>")))
+                                              remote.make_handler(self.tv, lan=False)))
         self.url = f"http://127.0.0.1:{self.page.server_address[1]}"
 
     def tearDown(self):
@@ -121,7 +121,8 @@ class SonyRemoteTest(unittest.TestCase):
         status, body = self.request("/")
         self.assertEqual(status, 200)
         self.assertIn("TV Remote", body)
-        self.assertIn("<code>cd ~/x &amp;&amp; &lt;run&gt;</code>", body)
+        self.assertNotIn("Copy and paste", body)
+        self.assertNotIn(PSK, body)  # the page never shows the key
 
     def test_power_toggles(self):
         self.assertEqual(self.press("/key/power")[0], 204)
@@ -192,14 +193,6 @@ class SonyRemoteTest(unittest.TestCase):
         self.assertEqual(self.press("/text", json.dumps({"text": "dune"}).encode())[0], 204)
         self.assertEqual(FakeTv.field, "dune")
         self.assertEqual(self.press("/text", b'{"text": 5}')[0], 400)
-
-    def test_start_command(self):
-        args = type("Args", (), {"lan": True, "port": 9000})()
-        command = remote.start_command("192.168.1.210", "0000", args)
-        self.assertTrue(command.startswith("cd "))
-        self.assertTrue(command.endswith(" && TV_HOST=192.168.1.210 TV_PSK=0000 "
-                                         "python3 tools/sony-remote.py --lan --port 9000"))
-
 
     def test_make_app(self):
         with tempfile.TemporaryDirectory() as folder:
