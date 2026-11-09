@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Space Mono, the text face of the dot-matrix design: regular (400) and bold (700), both trimmed to the
+     Latin set the launcher draws. Characters outside it fall back to Android's own font. -->
+<font-family xmlns:android="http://schemas.android.com/apk/res/android">
+    <font
+        android:font="@font/space_mono_regular"
+        android:fontStyle="normal"
+        android:fontWeight="400" />
+    <font
+        android:font="@font/space_mono_bold"
+        android:fontStyle="normal"
+        android:fontWeight="700" />
+</font-family>

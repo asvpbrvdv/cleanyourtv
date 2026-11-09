@@ -41,10 +41,10 @@ per code block, and say what each command does and what output to expect.
   as it was before either design is commit `f0f2686` on `main` (`git checkout f0f2686`).
 - **Building it:** follow `docs/designs/dot-matrix/BUILD.md`, step by step. The owner chose **English only**:
   no translations and no right-to-left Hebrew layout (step 1 of the brief removes them).
-- The typeface is Inter, not Outfit: `res/font/inter.ttf`, trimmed to Outfit's characters and weights
-  200 to 500 so the APK stays small. CI fails the build at 400 KB (409,600 bytes); the release APK was
-  406,983 bytes after the switch, so there is little room. If a change pushes it over, trim the font
-  further (its kerning table is the largest part) before removing anything else.
+- The typefaces are Doto (display: clock, app name, screensaver time, settings title and numbers; capitals
+  only, so those views use `textAllCaps`) and Space Mono (everything else, `@font/space_mono`, regular and
+  bold), both trimmed with fonttools (see step 2 of the dot-matrix brief). CI fails the build at 400 KB
+  (409,600 bytes); English only and the new fonts brought the release APK well under that.
 - Look-and-feel changes that `config.json` covers (dock, columns, colours, wallpaper; see
   `themes/README.md`) go out with `tools/theme.sh` without a rebuild. Anything else needs
   `TV_HOST=192.168.1.210 launcher/build-and-install.sh`.

@@ -28,7 +28,7 @@
         android:textColor="@drawable/pill_text"
         android:duplicateParentState="true"
         android:textSize="15sp"
-        android:fontFamily="@font/inter_medium"
+        android:fontFamily="@font/space_mono"
         android:singleLine="true" />
 
     <View
@@ -45,6 +45,6 @@
         android:textColor="@drawable/pill_text_dim"
         android:duplicateParentState="true"
         android:textSize="11sp"
-        android:fontFamily="@font/inter"
+        android:fontFamily="@font/space_mono"
         android:letterSpacing="0.04" />
 </LinearLayout>
