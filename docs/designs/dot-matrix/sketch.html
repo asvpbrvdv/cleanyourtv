@@ -1,0 +1,484 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dot Matrix Home Sketch</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Doto:wght@400..900&family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: screen tabs and the mode switch above one TV screen; notes for each screen below. Single dark page on purpose. */
+:root {
+  --page: #0b0b0b;
+  --ink: #f2f2f2;
+  --muted: #8c8c8c;
+  --line: #262626;
+  --red: #d71921;
+  --dot: "Doto", "Space Mono", ui-monospace, monospace;
+  --mono: "Space Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5; }
+.page { max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 56px; display: grid; gap: 18px; }
+.top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; }
+h1 { margin: 0; font-family: var(--dot); font-weight: 800; font-size: clamp(30px, 5vw, 48px); letter-spacing: .02em; line-height: 1; }
+.lede { margin: 0; color: var(--muted); max-width: 70ch; }
+kbd { font-family: var(--mono); font-size: 12px; padding: 1px 6px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink); }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; }
+.seggroup { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 999px; padding: 3px; gap: 2px; max-width: 100%; }
+.seggroup button { border: 0; background: transparent; color: var(--muted); font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; padding: 5px 14px; border-radius: 999px; cursor: pointer; }
+.seggroup button[aria-pressed="true"] { background: var(--ink); color: var(--page); }
+.seggroup button:focus-visible { outline: 2px solid var(--acc, var(--red)); outline-offset: 2px; }
+
+.tv { background: #000; padding: clamp(4px, .7%, 9px); border-radius: 10px; box-shadow: 0 0 0 1px #1d1d1d, 0 30px 70px -30px rgba(0,0,0,.9); }
+.screen { position: relative; container-type: inline-size; aspect-ratio: 16 / 9; width: 100%; max-width: 100%; overflow: hidden; border-radius: 3px; background: #000; outline: none; cursor: pointer; }
+.screen:focus-visible { box-shadow: 0 0 0 2px var(--acc, var(--red)); }
+
+/* ---------- TV palette (dark default, light override) ---------- */
+.stage { --dp: calc(100cqw / 960); --bg: #000; --fg: #f2f2f2; --fg2: rgba(255,255,255,.6); --fg3: rgba(255,255,255,.3); --dotc: rgba(255,255,255,.075); --sel-bg: #f2f2f2; --sel-fg: #000; --panel: #000;
+  position: absolute; inset: 0; color: var(--fg); font-family: var(--mono); user-select: none;
+  background-color: var(--bg);
+  background-image: radial-gradient(circle, var(--dotc) calc(var(--dp) * 1.1), transparent calc(var(--dp) * 1.3));
+  background-size: calc(var(--dp) * 12) calc(var(--dp) * 12);
+  background-position: calc(var(--dp) * 6) calc(var(--dp) * 6); }
+.stage.light { --bg: #ecebe6; --fg: #111; --fg2: rgba(0,0,0,.55); --fg3: rgba(0,0,0,.28); --dotc: rgba(0,0,0,.1); --sel-bg: #111; --sel-fg: #f2f2f2; --panel: #ecebe6; }
+/* Colour mode: the dark look with NYC Subway line colours as identifiers. Each item carries its own colour
+   (set from script as --acc, with --acc-ink for the text on it); bullets show its number or letter. */
+.heroMeta i, .tname::before { font-size: 0; }
+.color .heroMeta i { width: calc(var(--dp) * 18); height: calc(var(--dp) * 18); display: grid; place-items: center; font: 700 calc(var(--dp) * 10) / 1 "Inter", system-ui, sans-serif; color: var(--acc-ink, #fff); }
+.color .tname::before { content: attr(data-b); width: calc(var(--dp) * 16); height: calc(var(--dp) * 16); display: grid; place-items: center; font: 700 calc(var(--dp) * 9) / 1 "Inter", system-ui, sans-serif; color: var(--acc-ink, #fff); }
+.color .tile.focus { box-shadow: 0 0 0 calc(var(--dp) * 2.5) var(--acc, var(--red)); }
+.color .pips span { width: calc(var(--dp) * 6); height: calc(var(--dp) * 6); }
+.color .seg.focus svg, .color .irow.focus svg { fill: var(--acc, var(--red)); }
+.layer { position: absolute; inset: 0; }
+.layer[hidden], .hdr[hidden] { display: none !important; }
+
+/* Header: segmented bar on the left, time and date on the right */
+.hdr { position: absolute; left: calc(var(--dp) * 56); right: calc(var(--dp) * 56); top: calc(var(--dp) * 26); display: flex; align-items: center; justify-content: space-between; z-index: 3; }
+.bar { display: flex; height: calc(var(--dp) * 40); padding: calc(var(--dp) * 3); gap: calc(var(--dp) * 3); border: calc(var(--dp) * 1) solid var(--fg3); border-radius: calc(var(--dp) * 20); background: var(--panel); }
+.seg { display: flex; align-items: center; gap: calc(var(--dp) * 8); padding: 0 calc(var(--dp) * 15) 0 calc(var(--dp) * 12); border-radius: calc(var(--dp) * 17); font-size: calc(var(--dp) * 12); letter-spacing: .1em; text-transform: uppercase; color: var(--fg); opacity: .85; white-space: nowrap; }
+.seg svg { width: calc(var(--dp) * 17); height: calc(var(--dp) * 17); fill: currentColor; flex: none; }
+/* Every segment keeps room for the red dot, so selecting one never changes its width. */
+.seg::after { content: ""; flex: none; width: calc(var(--dp) * 5); height: calc(var(--dp) * 5); border-radius: 50%; background: transparent; margin-left: calc(var(--dp) * 2); }
+.seg.focus, .seg.open { background: var(--sel-bg); color: var(--sel-fg); opacity: 1; }
+.seg.focus::after, .seg.open::after { background: var(--acc, var(--red)); }
+.when { display: flex; align-items: baseline; gap: calc(var(--dp) * 14); }
+.time { font-family: var(--dot); font-weight: 900; font-size: calc(var(--dp) * 12); letter-spacing: .1em; line-height: 1; font-variant-numeric: tabular-nums; }
+.ampm { font-size: calc(var(--dp) * 11); letter-spacing: .14em; color: var(--fg2); margin-left: calc(var(--dp) * -8); }
+.date { font-size: calc(var(--dp) * 12); letter-spacing: .14em; color: var(--fg2); white-space: pre; }
+
+/* Home: shelf name, dock outline, tiles */
+.hero { position: absolute; left: calc(var(--dp) * 66); top: calc(var(--dp) * 248); display: grid; gap: calc(var(--dp) * 10); }
+.heroName { font-family: var(--dot); font-weight: 800; font-size: calc(var(--dp) * 64); line-height: .9; letter-spacing: .02em; white-space: nowrap; }
+.heroMeta { display: flex; align-items: center; gap: calc(var(--dp) * 10); font-size: calc(var(--dp) * 11); letter-spacing: .16em; text-transform: uppercase; color: var(--fg2); }
+.heroMeta i { width: calc(var(--dp) * 7); height: calc(var(--dp) * 7); border-radius: 50%; background: var(--acc, var(--red)); }
+.dock { position: absolute; left: calc(var(--dp) * 58); width: calc(var(--dp) * 844); height: calc(var(--dp) * 129); border: calc(var(--dp) * 1) dashed var(--fg3); border-radius: calc(var(--dp) * 26); }
+.tile { position: absolute; width: calc(var(--dp) * 180); height: calc(var(--dp) * 101); border-radius: calc(var(--dp) * 14); overflow: hidden; filter: grayscale(1) brightness(.75) contrast(1.05); transition: filter .25s, transform .3s cubic-bezier(.3,1.4,.5,1); font-size: calc(var(--dp) * 16); box-shadow: 0 0 0 calc(var(--dp) * 1) rgba(255,255,255,.14); }
+.light .tile { filter: grayscale(1) contrast(.92); box-shadow: 0 0 0 calc(var(--dp) * 1) rgba(0,0,0,.12); }
+.tile.focus, .light .tile.focus { filter: none; transform: scale(1.08); box-shadow: 0 0 0 calc(var(--dp) * 2) var(--fg); z-index: 2; }
+.pips { position: absolute; display: flex; gap: calc(var(--dp) * 6); transform: translateX(-50%); transition: left .3s cubic-bezier(.3,1.3,.5,1), top .3s cubic-bezier(.3,1.3,.5,1), opacity .15s; }
+.pips span { width: calc(var(--dp) * 4); height: calc(var(--dp) * 4); border-radius: 50%; background: var(--acc, var(--red)); }
+.peek { position: absolute; width: calc(var(--dp) * 180); height: calc(var(--dp) * 101); border-radius: calc(var(--dp) * 14); border: calc(var(--dp) * 1) solid var(--fg3); opacity: .6; background: radial-gradient(circle, var(--fg3) calc(var(--dp) * 1.1), transparent calc(var(--dp) * 1.4)) 0 0 / calc(var(--dp) * 8) calc(var(--dp) * 8); }
+.tname { position: absolute; display: flex; align-items: center; justify-content: center; gap: calc(var(--dp) * 7); width: calc(var(--dp) * 220); transform: translateX(-50%); font-size: calc(var(--dp) * 11); letter-spacing: .14em; text-transform: uppercase; white-space: nowrap; transition: left .3s cubic-bezier(.3,1.3,.5,1), top .3s cubic-bezier(.3,1.3,.5,1); }
+.tname::before { content: ""; width: calc(var(--dp) * 5); height: calc(var(--dp) * 5); border-radius: 50%; background: var(--acc, var(--red)); }
+
+/* Inputs: dims Home and drops a panel under the bar */
+.veil { position: absolute; inset: 0; background: color-mix(in srgb, var(--bg) 70%, transparent); }
+.panel { position: absolute; left: calc(var(--dp) * 56); top: calc(var(--dp) * 76); width: calc(var(--dp) * 340); padding: calc(var(--dp) * 6); border: calc(var(--dp) * 1) solid var(--fg3); border-radius: calc(var(--dp) * 18); background: var(--panel); z-index: 4; }
+.irow { height: calc(var(--dp) * 42); display: grid; grid-template-columns: calc(var(--dp) * 20) 1fr auto; align-items: center; gap: calc(var(--dp) * 12); padding: 0 calc(var(--dp) * 14); border-radius: calc(var(--dp) * 13); font-size: calc(var(--dp) * 12); letter-spacing: .1em; text-transform: uppercase; }
+.irow svg { width: calc(var(--dp) * 18); height: calc(var(--dp) * 18); fill: currentColor; }
+.irow .st { display: flex; align-items: center; gap: calc(var(--dp) * 7); font-size: calc(var(--dp) * 10); letter-spacing: .14em; color: var(--fg2); }
+.irow .st i { width: calc(var(--dp) * 7); height: calc(var(--dp) * 7); border-radius: 50%; border: calc(var(--dp) * 1.2) solid currentColor; }
+.irow .st.on i { background: currentColor; }
+.irow small { color: var(--fg2); font-size: calc(var(--dp) * 10); margin-left: calc(var(--dp) * 6); }
+.irow.focus { background: var(--sel-bg); color: var(--sel-fg); }
+.irow.focus .st, .irow.focus small { color: var(--sel-fg); opacity: .7; }
+.irow.focus svg { fill: var(--acc, var(--red)); }
+
+/* Settings: two columns, choices as boxes, toggles as rows */
+.sTitle { position: absolute; left: calc(var(--dp) * 96); top: calc(var(--dp) * 62); font-family: var(--dot); font-weight: 900; font-size: calc(var(--dp) * 34); letter-spacing: .04em; line-height: 1; }
+.sSub { position: absolute; left: calc(var(--dp) * 98); top: calc(var(--dp) * 104); font-size: calc(var(--dp) * 10); letter-spacing: .16em; color: var(--fg2); text-transform: uppercase; }
+.sLabel { position: absolute; font-size: calc(var(--dp) * 11); letter-spacing: .16em; text-transform: uppercase; color: var(--fg2); }
+.choice { position: absolute; width: calc(var(--dp) * 82); height: calc(var(--dp) * 44); display: grid; place-items: center; border: calc(var(--dp) * 1) solid var(--fg3); border-radius: calc(var(--dp) * 12); font-family: var(--dot); font-weight: 900; font-size: calc(var(--dp) * 20); }
+.choice.sel::after { content: ""; position: absolute; bottom: calc(var(--dp) * 6); width: calc(var(--dp) * 5); height: calc(var(--dp) * 5); border-radius: 50%; background: var(--acc, var(--red)); }
+.toggle { position: absolute; left: calc(var(--dp) * 504); width: calc(var(--dp) * 360); height: calc(var(--dp) * 44); display: flex; align-items: center; justify-content: space-between; padding: 0 calc(var(--dp) * 16); border: calc(var(--dp) * 1) solid var(--fg3); border-radius: calc(var(--dp) * 12); font-size: calc(var(--dp) * 12); letter-spacing: .12em; text-transform: uppercase; }
+.toggle .val { display: flex; align-items: center; gap: calc(var(--dp) * 7); color: var(--fg2); }
+.toggle .val.on::before { content: ""; width: calc(var(--dp) * 5); height: calc(var(--dp) * 5); border-radius: 50%; background: var(--acc, var(--red)); }
+.choice.focus, .toggle.focus { background: var(--sel-bg); color: var(--sel-fg); border-color: var(--sel-bg); }
+.toggle.focus .val { color: var(--sel-fg); }
+.sHint { position: absolute; left: calc(var(--dp) * 506); width: calc(var(--dp) * 356); font-size: calc(var(--dp) * 9.5); line-height: 1.5; letter-spacing: .04em; color: var(--fg2); }
+.sFoot { position: absolute; left: calc(var(--dp) * 98); bottom: calc(var(--dp) * 40); font-size: calc(var(--dp) * 10); letter-spacing: .16em; color: var(--fg2); text-transform: uppercase; }
+
+/* Screensaver: big dotted clock drifting slowly so nothing burns in */
+.saver { position: absolute; left: 50%; top: 50%; display: grid; justify-items: center; gap: calc(var(--dp) * 14); animation: drift 48s ease-in-out infinite alternate; }
+.sTime { display: flex; align-items: baseline; gap: calc(var(--dp) * 10); }
+.sTime b { font-family: var(--dot); font-weight: 900; font-size: calc(var(--dp) * 120); line-height: .85; letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+.sTime span { font-size: calc(var(--dp) * 18); letter-spacing: .16em; color: var(--fg2); }
+.sDate { display: flex; align-items: center; gap: calc(var(--dp) * 12); font-size: calc(var(--dp) * 16); letter-spacing: .2em; color: var(--fg2); white-space: pre; }
+.sDate i { width: calc(var(--dp) * 6); height: calc(var(--dp) * 6); border-radius: 50%; background: var(--acc, var(--red)); }
+@keyframes drift {
+  0% { transform: translate(-58%, -62%); }
+  33% { transform: translate(-40%, -44%); }
+  66% { transform: translate(-60%, -36%); }
+  100% { transform: translate(-44%, -58%); }
+}
+
+.toast { position: absolute; left: 50%; bottom: calc(var(--dp) * 26); transform: translate(-50%, calc(var(--dp) * 8)); padding: calc(var(--dp) * 9) calc(var(--dp) * 18); border: calc(var(--dp) * 1) solid var(--fg3); border-radius: calc(var(--dp) * 14); background: var(--panel); font-size: calc(var(--dp) * 11); letter-spacing: .14em; text-transform: uppercase; opacity: 0; transition: opacity .2s, transform .25s; z-index: 9; white-space: nowrap; pointer-events: none; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* Stand-in app artwork */
+.b { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: .35em; font-family: "Inter", system-ui, sans-serif; }
+.b-netflix { background: #fff; color: #e50914; font-weight: 800; font-size: 2.1em; }
+.b-netflix span { display: inline-block; transform: scaleY(1.25); }
+.b-youtube { background: #f2f2f2; color: #212121; font-weight: 700; font-size: 1.55em; letter-spacing: -.04em; }
+.b-youtube i { width: 1.45em; height: 1em; border-radius: .28em; background: #ff0000; position: relative; }
+.b-youtube i::after { content: ""; position: absolute; left: .55em; top: .27em; border-left: .42em solid #fff; border-top: .23em solid transparent; border-bottom: .23em solid transparent; }
+.b-prime { background: #0f79f3; color: #fff; font-weight: 600; font-size: 1.45em; flex-direction: column; gap: 0; line-height: 1; }
+.b-prime small { display: block; width: 2.6em; height: .45em; border-bottom: .12em solid #fff; border-radius: 0 0 50% 50%; }
+.b-disney { background: radial-gradient(120% 140% at 30% 20%, #1c4fbf, #0a1a4d 70%); color: #fff; font-weight: 500; font-style: italic; font-size: 1.75em; }
+.b-pluto { background: #0b0b0b; color: #fff200; font-weight: 800; font-size: 1.55em; }
+.b-max { background: #002be7; color: #fff; font-weight: 800; font-size: 2em; letter-spacing: -.05em; }
+.b-hulu { background: #0b0c0f; color: #1ce783; font-weight: 800; font-size: 2em; letter-spacing: -.04em; }
+.b-spotify { background: #121212; color: #fff; font-weight: 700; font-size: 1.4em; }
+.b-spotify i { width: 1.15em; height: 1.15em; border-radius: 50%; background: #1ed760; }
+.b-plex { background: #1f1f1f; color: #fff; font-weight: 700; font-size: 1.75em; }
+.b-plex b { color: #e5a00d; font-weight: 800; }
+.b-play { background: #f3f3f3; color: #5f6368; font-weight: 500; font-size: 1.25em; }
+.b-play i { width: 0; height: 0; border-left: 1em solid #01875f; border-top: .62em solid transparent; border-bottom: .62em solid transparent; }
+.b-twitch { background: #9146ff; color: #fff; font-weight: 800; font-size: 1.65em; }
+.b-vlc { background: #ff8800; color: #fff; font-weight: 800; font-size: 1.9em; }
+
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.note { border-top: 1px solid var(--line); padding-top: 12px; display: grid; gap: 4px; align-content: start; min-width: 0; }
+.note h2 { margin: 0; font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.note p { margin: 0; color: var(--muted); font-size: 14px; }
+@media (prefers-reduced-motion: reduce) { .tile, .pips, .tname { transition: none; } .saver { animation: none; transform: translate(-50%, -50%); } }
+</style>
+
+<div class="page">
+  <div class="top">
+    <h1>DOT MATRIX</h1>
+    <div class="seggroup" role="group" aria-label="Screen mode">
+      <button type="button" data-mode="dark" aria-pressed="true">Dark</button>
+      <button type="button" data-mode="light" aria-pressed="false">Light</button>
+      <button type="button" data-mode="color" aria-pressed="false">Color</button>
+    </div>
+  </div>
+  <p class="lede">A rough sketch of every screen the launcher draws, in the dot-matrix style. Pick a screen, click it, then use <kbd>←</kbd> <kbd>↑</kbd> <kbd>→</kbd> <kbd>↓</kbd>, <kbd>Enter</kbd> and <kbd>Esc</kbd>.</p>
+  <div class="controls">
+    <div class="seggroup" role="group" aria-label="Screen">
+      <button type="button" data-screen="home" aria-pressed="true">Home</button>
+      <button type="button" data-screen="grid" aria-pressed="false">App grid</button>
+      <button type="button" data-screen="inputs" aria-pressed="false">Inputs</button>
+      <button type="button" data-screen="settings" aria-pressed="false">Settings</button>
+      <button type="button" data-screen="saver" aria-pressed="false">Screensaver</button>
+    </div>
+  </div>
+
+  <div class="tv">
+    <div class="screen" id="screen" tabindex="0" role="application" aria-label="Dot matrix launcher sketch. Arrow keys move, Enter selects, Escape goes back.">
+      <div class="stage" id="stage">
+        <div class="layer" id="homeLayer"></div>
+        <div class="layer" id="gridLayer" hidden></div>
+        <div class="layer" id="inputsLayer" hidden><div class="veil"></div><div class="panel" id="panel"></div></div>
+        <div class="layer" id="settingsLayer" hidden></div>
+        <div class="layer" id="saverLayer" hidden>
+          <div class="saver"><div class="sTime"><b id="sTime">5:21</b><span id="sAmpm">PM</span></div><div class="sDate"><i></i><span id="sDate">MON  9 NOV</span></div></div>
+        </div>
+        <div class="hdr" id="hdr">
+          <div class="bar">
+            <div class="seg" data-seg="0"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18,7V4c0,-1.1 -0.9,-2 -2,-2H8C6.9,2 6,2.9 6,4v3H5v6l3,6v3h8v-3l3,-6V7H18zM8,4h8v3h-2V5h-1v2h-2V5h-1v2H8V4z"/></svg>Inputs</div>
+            <div class="seg" data-seg="1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1,9l2,2c4.97,-4.97 13.03,-4.97 18,0l2,-2C16.93,2.93 7.08,2.93 1,9zM9,17l3,3 3,-3c-1.650,-1.66 -4.34,-1.66 -6,0zM5,13l2,2c2.76,-2.76 7.24,-2.76 10,0l2,-2C15.14,9.14 8.87,9.14 5,13z"/></svg>Home Wi-Fi</div>
+            <div class="seg" data-seg="2"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.14,12.94c0.04,-0.3 0.06,-0.61 0.06,-0.94c0,-0.32 -0.02,-0.64 -0.07,-0.94l2.03,-1.58c0.18,-0.14 0.23,-0.41 0.12,-0.61l-1.92,-3.32c-0.12,-0.22 -0.37,-0.29 -0.59,-0.22l-2.39,0.96c-0.5,-0.38 -1.03,-0.7 -1.62,-0.94L14.4,2.81c-0.04,-0.24 -0.24,-0.41 -0.48,-0.41h-3.84c-0.24,0 -0.43,0.17 -0.47,0.41L9.25,5.35C8.66,5.590 8.12,5.92 7.63,6.29L5.24,5.33c-0.22,-0.08 -0.47,0 -0.59,0.22L2.74,8.87C2.62,9.08 2.66,9.34 2.86,9.48l2.03,1.58C4.84,11.36 4.8,11.69 4.8,12s0.02,0.64 0.07,0.94l-2.03,1.58c-0.18,0.14 -0.23,0.41 -0.12,0.61l1.92,3.32c0.12,0.22 0.37,0.29 0.59,0.22l2.39,-0.96c0.5,0.38 1.03,0.7 1.62,0.94l0.36,2.54c0.05,0.24 0.24,0.41 0.48,0.41h3.84c0.24,0 0.44,-0.17 0.47,-0.41l0.36,-2.54c0.59,-0.24 1.13,-0.56 1.62,-0.94l2.39,0.96c0.22,0.08 0.47,0 0.59,-0.22l1.92,-3.32c0.12,-0.22 0.07,-0.47 -0.12,-0.61L19.14,12.94zM12,15.6c-1.98,0 -3.6,-1.62 -3.6,-3.6s1.62,-3.6 3.6,-3.6s3.6,1.62 3.6,3.6S13.98,15.6 12,15.6z"/></svg>Settings</div>
+            <div class="seg" data-seg="3"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 2v16a8 8 0 0 1 0-16z"/></svg><span id="modeLabel">Dark</span></div>
+          </div>
+          <div class="when"><span class="time" id="time">5:21</span><span class="ampm" id="ampm">PM</span><span class="date" id="date">MON  9 NOV</span></div>
+        </div>
+        <div class="toast" id="toast"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note"><h2>Home</h2><p>The dotted app name over the dock, its place in the dock under it, and red pips under the selected tile. Tiles stay black and white until selected.</p></div>
+    <div class="note"><h2>App grid</h2><p>Press Down from the dock and the grid slides up. The selected app's name appears under its tile with a red dot instead of the pips.</p></div>
+    <div class="note"><h2>Inputs</h2><p>Home dims and a panel drops from the bar. Filled dots are devices that are on, hollow ones are empty ports. The selected row turns solid with a red icon.</p></div>
+    <div class="note"><h2>Settings</h2><p>Hold OK on Settings to open. Number choices as boxes with a red dot under the current one; switches as rows with a red dot when on.</p></div>
+    <div class="note"><h2>Mode button</h2><p>The fourth segment in the top bar shows the current mode. OK cycles Dark, Light and Color. Colour mode is black with NYC Subway line colours as identifiers: numbered bullets for the dock, lettered ones for the grid.</p></div>
+    <div class="note"><h2>Screensaver</h2><p>A big dotted clock that drifts slowly around the screen so nothing burns in, with the date and one red dot.</p></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const DOCK = [
+    { name: "Netflix", html: '<div class="b b-netflix"><span>NETFLIX</span></div>' },
+    { name: "YouTube", html: '<div class="b b-youtube"><i></i>YouTube</div>' },
+    { name: "Prime Video", html: '<div class="b b-prime">prime video<small></small></div>' },
+    { name: "Disney+", html: '<div class="b b-disney">Disney+</div>' }
+  ];
+  const GRID = [
+    { name: "Pluto TV", html: '<div class="b b-pluto">pluto tv</div>' },
+    { name: "Max", html: '<div class="b b-max">max</div>' },
+    { name: "Hulu", html: '<div class="b b-hulu">hulu</div>' },
+    { name: "Spotify", html: '<div class="b b-spotify"><i></i>Spotify</div>' },
+    { name: "Plex", html: '<div class="b b-plex">ple<b>x</b></div>' },
+    { name: "Google Play Store", html: '<div class="b b-play"><i></i>Google Play</div>' },
+    { name: "Twitch", html: '<div class="b b-twitch">twitch</div>' },
+    { name: "VLC", html: '<div class="b b-vlc">VLC</div>' }
+  ];
+  const INPUT_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18,7V4c0,-1.1 -0.9,-2 -2,-2H8C6.9,2 6,2.9 6,4v3H5v6l3,6v3h8v-3l3,-6V7H18zM8,4h8v3h-2V5h-1v2h-2V5h-1v2H8V4z"/></svg>';
+  const TV_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 1.99-.9 1.99-2L23 5c0-1.1-.9-2-2-2zm0 14H3V5h18v12z"/></svg>';
+  const INPUTS = [
+    { title: "PlayStation 5", port: "HDMI 1", on: true },
+    { title: "Apple TV", port: "HDMI 2", on: true },
+    { title: "HDMI 3", port: "", on: false },
+    { title: "Switch 2", port: "HDMI 4", on: true },
+    { title: "Live TV", port: "", live: true }
+  ];
+
+  const PAD = 56, CELL = 212, TW = 180, TH = 101;
+  const d = v => "calc(var(--dp) * " + v + ")";
+  const $ = id => document.getElementById(id);
+  const stage = $("stage"), screen = $("screen");
+  const segs = Array.from(document.querySelectorAll(".seg"));
+  const colX = c => PAD + c * CELL + (CELL - TW) / 2;
+  const state = { screen: "home", focus: {}, settings: { cols: 4, rows: 0, wallpaper: false, animations: true, advanced: false } };
+
+  function tile(app, x, y, layer) {
+    const el = document.createElement("div");
+    el.className = "tile";
+    el.innerHTML = app.html;
+    el.style.left = d(x); el.style.top = d(y);
+    el.dataset.x = x; el.dataset.y = y; el.dataset.name = app.name;
+    layer.appendChild(el);
+    return el;
+  }
+  function el(cls, layer, styles, html) {
+    const e = document.createElement("div");
+    e.className = cls;
+    Object.entries(styles || {}).forEach(([k, v]) => (e.style[k] = v));
+    if (html) e.innerHTML = html;
+    layer.appendChild(e);
+    return e;
+  }
+
+  // Home: dock at the bottom, shelf name above it
+  const home = $("homeLayer");
+  el("hero", home, {}, '<div class="heroName" id="heroName">NETFLIX</div><div class="heroMeta"><i></i><span id="heroMeta">01 / 04 · Dock</span></div>');
+  el("dock", home, { top: d(346) });
+  const homeTiles = DOCK.map((a, i) => tile(a, colX(i), 360, home));
+  for (let i = 0; i < 4; i++) el("peek", home, { left: d(colX(i)), top: d(518) });
+  const homePips = el("pips", home, {}, "<span></span><span></span><span></span>");
+
+  // App grid: the same screen scrolled up so two rows show under the dock
+  const grid = $("gridLayer");
+  el("dock", grid, { top: d(190) });
+  const gridTiles = DOCK.map((a, i) => tile(a, colX(i), 204, grid))
+    .concat(GRID.map((a, i) => tile(a, colX(i % 4), 362 + Math.floor(i / 4) * 146, grid)));
+  const gridName = el("tname", grid);
+  const gridPips = el("pips", grid, {}, "<span></span><span></span><span></span>");
+
+  // Inputs
+  const panel = $("panel");
+  const inputRows = INPUTS.map(r => {
+    const st = r.live ? "" : '<span class="st' + (r.on ? " on" : "") + '"><i></i>' + (r.on ? "On" : "No device") + "</span>";
+    return el("irow", panel, {}, (r.live ? TV_ICON : INPUT_ICON) + "<span>" + r.title + (r.port ? "<small>" + r.port + "</small>" : "") + "</span>" + st);
+  });
+
+  // Settings
+  const set = $("settingsLayer");
+  el("sTitle", set, {}, "LAUNCHER SETTINGS");
+  el("sSub", set, {}, "Changes apply as you choose them");
+  el("sLabel", set, { left: d(98), top: d(140) }, "Apps per row");
+  const colChoices = [4, 5, 6, 7].map((n, i) => { const c = el("choice", set, { left: d(96 + i * 90), top: d(160) }, String(n)); c.dataset.group = "cols"; c.dataset.value = n; return c; });
+  el("sLabel", set, { left: d(98), top: d(228) }, "Rows below dock");
+  const rowChoices = [0, 1, 2, 3].map((n, i) => { const c = el("choice", set, { left: d(96 + i * 90), top: d(248) }, String(n)); c.dataset.group = "rows"; c.dataset.value = n; return c; });
+  el("sLabel", set, { left: d(506), top: d(140) }, "Look and motion");
+  const toggles = [["wallpaper", "Wallpaper", 160], ["animations", "Animations", 212], ["advanced", "Advanced effects", 264]].map(([key, label, y]) => {
+    const t = el("toggle", set, { top: d(y) }, "<span>" + label + '</span><span class="val"></span>');
+    t.dataset.key = key;
+    return t;
+  });
+  el("sHint", set, { top: d(314) }, "Adds a lifted tile, icon zoom and smooth colour changes. May use more memory on some TVs.");
+  const actions = [["Follow theme", 352, "Back to the theme's own layout"], ["Choose default home", 404, "Opens Android's home picker"]].map(([label, y, msg]) => {
+    const t = el("toggle", set, { top: d(y) }, "<span>" + label + '</span><span class="val">→</span>');
+    t.dataset.msg = msg;
+    return t;
+  });
+  el("sFoot", set, {}, "Back to return home");
+
+  // NYC Subway line colours; yellow and grey bullets take black text, as on the subway.
+  const LINE = { red: "#ee352e", green: "#00933c", blue: "#0039a6", orange: "#ff6319", yellow: "#fccc0a", purple: "#b933ad", lime: "#6cbe45", brown: "#996633", grey: "#a7a9ac" };
+  const DARK_INK = [LINE.yellow, LINE.grey];
+  function line(e, c, b) { e.dataset.acc = c; e.dataset.ink = DARK_INK.includes(c) ? "#000" : "#fff"; if (b) e.dataset.b = b; }
+  [LINE.red, LINE.green, LINE.blue, LINE.orange].forEach((c, i) => { line(homeTiles[i], c, String(i + 1)); line(gridTiles[i], c, String(i + 1)); });
+  [LINE.yellow, LINE.purple, LINE.lime, LINE.brown, LINE.grey, LINE.blue, LINE.green, LINE.orange].forEach((c, i) => line(gridTiles[4 + i], c, "ABCDEFGH"[i]));
+  [LINE.orange, LINE.blue, LINE.grey, LINE.purple].forEach((c, i) => line(segs[i], c));
+  [LINE.red, LINE.green, LINE.blue, LINE.orange, LINE.yellow].forEach((c, i) => line(inputRows[i], c));
+  colChoices.forEach(e => line(e, LINE.yellow));
+  rowChoices.forEach(e => line(e, LINE.lime));
+  toggles.forEach(e => line(e, LINE.purple));
+  actions.forEach(e => line(e, LINE.grey));
+
+  const MODES = ["dark", "light", "color"];
+  let mode = "dark";
+  function setMode(m) {
+    mode = m;
+    stage.classList.toggle("light", m === "light");
+    stage.classList.toggle("color", m === "color");
+    document.querySelectorAll("[data-mode]").forEach(o => o.setAttribute("aria-pressed", String(o.dataset.mode === m)));
+    $("modeLabel").textContent = m === "color" ? "Color" : m === "light" ? "Light" : "Dark";
+    paint();
+  }
+
+  function paintSettings() {
+    const s = state.settings;
+    colChoices.forEach(c => c.classList.toggle("sel", +c.dataset.value === s.cols));
+    rowChoices.forEach(c => c.classList.toggle("sel", +c.dataset.value === s.rows));
+    toggles.forEach(t => { const v = t.querySelector(".val"); const on = s[t.dataset.key]; v.textContent = on ? "On" : "Off"; v.classList.toggle("on", on); });
+  }
+
+  const FOCUSABLE = {
+    home: () => segs.concat(homeTiles),
+    grid: () => segs.concat(gridTiles),
+    inputs: () => inputRows,
+    settings: () => colChoices.concat(rowChoices, toggles, actions),
+    saver: () => []
+  };
+  const START = { home: () => homeTiles[0], grid: () => gridTiles[4], inputs: () => inputRows[0], settings: () => colChoices[0], saver: () => null };
+
+  function current() { return state.focus[state.screen] || START[state.screen](); }
+
+  function paint() {
+    const f = current();
+    Object.values(FOCUSABLE).forEach(list => list().forEach(e => e.classList.remove("focus")));
+    if (f) f.classList.add("focus");
+    if (mode === "color") {
+      const acc = (f && f.dataset.acc) || LINE.red;
+      stage.style.setProperty("--acc", acc);
+      stage.style.setProperty("--acc-ink", DARK_INK.includes(acc) ? "#000" : "#fff");
+    } else {
+      stage.style.removeProperty("--acc");
+      stage.style.removeProperty("--acc-ink");
+    }
+    segs.forEach(s => s.classList.toggle("open", state.screen === "inputs" && s.dataset.seg === "0"));
+
+    if (state.screen === "home") {
+      const i = homeTiles.indexOf(f);
+      const onDock = i >= 0;
+      if (onDock) {
+        $("heroName").textContent = DOCK[i].name.toUpperCase();
+        $("heroMeta").textContent = String(i + 1).padStart(2, "0") + " / " + String(DOCK.length).padStart(2, "0") + " · Dock";
+        document.querySelector(".heroMeta i").textContent = String(i + 1);
+        homePips.style.left = d(colX(i) + TW / 2);
+      }
+      homePips.style.top = d(486);
+      homePips.style.opacity = onDock ? "1" : "0";
+    }
+    if (state.screen === "grid") {
+      const onTile = gridTiles.includes(f);
+      const isDock = onTile && gridTiles.indexOf(f) < 4;
+      if (onTile) {
+        const x = +f.dataset.x + TW / 2, y = +f.dataset.y + TH + 12;
+        gridName.textContent = f.dataset.name;
+        gridName.dataset.b = f.dataset.b || "";
+        gridName.style.left = d(x); gridName.style.top = d(y);
+        gridPips.style.left = d(x); gridPips.style.top = d(+f.dataset.y + TH + 16);
+      }
+      gridName.style.opacity = onTile && !isDock ? "1" : "0";
+      gridPips.style.opacity = isDock ? "1" : "0";
+    }
+  }
+
+  // Spatial navigation: the nearest focusable in the pressed direction, favouring ones in line with the current one.
+  function move(dir) {
+    const list = FOCUSABLE[state.screen](), from = current();
+    if (!from) return;
+    const a = from.getBoundingClientRect(), ax = a.left + a.width / 2, ay = a.top + a.height / 2;
+    let best = null, bestScore = Infinity;
+    list.forEach(e => {
+      if (e === from) return;
+      const b = e.getBoundingClientRect(), bx = b.left + b.width / 2, by = b.top + b.height / 2;
+      const main = { left: ax - bx, right: bx - ax, up: ay - by, down: by - ay }[dir];
+      const cross = dir === "left" || dir === "right" ? Math.abs(by - ay) : Math.abs(bx - ax);
+      if (main <= 4) return;
+      const score = main + cross * 2.2;
+      if (score < bestScore) { bestScore = score; best = e; }
+    });
+    if (best) { state.focus[state.screen] = best; paint(); }
+  }
+
+  let toastTimer = 0;
+  function toast(text) {
+    clearTimeout(toastTimer);
+    $("toast").textContent = text;
+    $("toast").classList.add("show");
+    toastTimer = setTimeout(() => $("toast").classList.remove("show"), 1700);
+  }
+
+  function ok() {
+    const f = current();
+    if (!f) return;
+    if (segs.includes(f)) {
+      const i = +f.dataset.seg;
+      if (i === 0) return show("inputs");
+      if (i === 2) return show("settings");
+      if (i === 3) return setMode(MODES[(MODES.indexOf(mode) + 1) % MODES.length]);
+      return toast("Opens Wi-Fi settings");
+    }
+    if (f.classList.contains("tile")) return toast("Opening " + f.dataset.name);
+    if (inputRows.includes(f)) return toast("Switching to " + INPUTS[inputRows.indexOf(f)].title);
+    if (f.dataset.group) { state.settings[f.dataset.group] = +f.dataset.value; return paintSettings(); }
+    if (f.dataset.key) { state.settings[f.dataset.key] = !state.settings[f.dataset.key]; return paintSettings(); }
+    if (f.dataset.msg) return toast(f.dataset.msg);
+  }
+
+  function back() {
+    if (state.screen === "home") { state.focus.home = homeTiles[0]; return paint(); }
+    show("home");
+  }
+
+  function show(name) {
+    state.screen = name;
+    ["home", "grid", "inputs", "settings", "saver"].forEach(n => ($(n + "Layer").hidden = n !== name));
+    if (name === "inputs") $("homeLayer").hidden = false;
+    $("hdr").hidden = name === "settings" || name === "saver";
+    document.querySelectorAll("[data-screen]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.screen === name)));
+    paint();
+  }
+
+  document.addEventListener("keydown", e => {
+    const tag = (e.target.tagName || "").toLowerCase();
+    if (tag === "button" && (e.key === "Enter" || e.key === " ")) return;
+    const dir = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down" }[e.key];
+    if (dir) {
+      e.preventDefault();
+      if (state.screen === "home" && dir === "down" && homeTiles.includes(current())) { state.focus.grid = gridTiles[4 + homeTiles.indexOf(current())]; return show("grid"); }
+      if (state.screen === "grid" && dir === "up" && gridTiles.indexOf(current()) >= 0 && gridTiles.indexOf(current()) < 4) { state.focus.home = homeTiles[gridTiles.indexOf(current())]; }
+      return move(dir);
+    }
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); return ok(); }
+    if (e.key === "Escape" || e.key === "Backspace") { e.preventDefault(); return back(); }
+  });
+  screen.addEventListener("click", () => screen.focus({ preventScroll: true }));
+  document.querySelectorAll("[data-screen]").forEach(b => b.addEventListener("click", () => { show(b.dataset.screen); screen.focus({ preventScroll: true }); }));
+  document.querySelectorAll("[data-mode]").forEach(b => b.addEventListener("click", () => setMode(b.dataset.mode)));
+
+  function tick() {
+    const t = new Date(), h = t.getHours(), hm = ((h % 12) || 12) + ":" + String(t.getMinutes()).padStart(2, "0"), ap = h < 12 ? "AM" : "PM";
+    const wd = t.toLocaleDateString("en-GB", { weekday: "long" }).slice(0, 3).toUpperCase();
+    const mo = t.toLocaleDateString("en-GB", { month: "long" }).slice(0, 3).toUpperCase();
+    const date = wd + "  " + t.getDate() + " " + mo;
+    $("time").textContent = hm; $("ampm").textContent = ap; $("date").textContent = date;
+    $("sTime").textContent = hm; $("sAmpm").textContent = ap; $("sDate").textContent = date;
+  }
+
+  paintSettings();
+  show("home");
+  tick();
+  setInterval(tick, 15000);
+})();
+</script>
