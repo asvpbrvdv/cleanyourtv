@@ -22,7 +22,15 @@ Settings, Screensaver) with a Dark / Light switch; open it in a browser and use 
 - **Settings:** two columns; number choices as boxes with a red dot under the current one, switches as
   rows with a red dot when on.
 - **Screensaver:** a large dotted clock and the date, drifting slowly so nothing burns in.
-- **Modes:** dark and light are colour sets only, chosen in the theme's `config.json`; no extra space.
+- **Modes:** Dark, Light and Color, switched from a fourth segment in the top bar (OK cycles them). Colour sets
+  only, so no extra space. Color is the dark look with NYC Subway line colours used as identifiers, the way the
+  subway uses them: each dock slot has a numbered bullet (1 red `#EE352E`, 2 green `#00933C`, 3 blue `#0039A6`,
+  4 orange `#FF6319`), grid apps lettered ones (yellow `#FCCC0A`, purple `#B933AD`, lime `#6CBE45`, brown
+  `#996633`, grey `#A7A9AC`, …), and the selected item lights up in its colour. Yellow and grey bullets take
+  black text.
+- **Inputs names:** a device that speaks HDMI-CEC is already listed under its own name ("Switch 2 · HDMI 4");
+  on the Sony that needs BRAVIA Sync on and no custom name on the port. Remembering the last device seen on a
+  port ("HDMI 4 · last: Steam Deck") would be a small addition.
 
 ## Size check
 

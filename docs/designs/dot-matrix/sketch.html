@@ -30,11 +30,11 @@ kbd { font-family: var(--mono); font-size: 12px; padding: 1px 6px; border: 1px s
 .seggroup { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 999px; padding: 3px; gap: 2px; max-width: 100%; }
 .seggroup button { border: 0; background: transparent; color: var(--muted); font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; padding: 5px 14px; border-radius: 999px; cursor: pointer; }
 .seggroup button[aria-pressed="true"] { background: var(--ink); color: var(--page); }
-.seggroup button:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+.seggroup button:focus-visible { outline: 2px solid var(--acc, var(--red)); outline-offset: 2px; }
 
 .tv { background: #000; padding: clamp(4px, .7%, 9px); border-radius: 10px; box-shadow: 0 0 0 1px #1d1d1d, 0 30px 70px -30px rgba(0,0,0,.9); }
 .screen { position: relative; container-type: inline-size; aspect-ratio: 16 / 9; width: 100%; max-width: 100%; overflow: hidden; border-radius: 3px; background: #000; outline: none; cursor: pointer; }
-.screen:focus-visible { box-shadow: 0 0 0 2px var(--red); }
+.screen:focus-visible { box-shadow: 0 0 0 2px var(--acc, var(--red)); }
 
 /* ---------- TV palette (dark default, light override) ---------- */
 .stage { --dp: calc(100cqw / 960); --bg: #000; --fg: #f2f2f2; --fg2: rgba(255,255,255,.6); --fg3: rgba(255,255,255,.3); --dotc: rgba(255,255,255,.075); --sel-bg: #f2f2f2; --sel-fg: #000; --panel: #000;
@@ -44,6 +44,14 @@ kbd { font-family: var(--mono); font-size: 12px; padding: 1px 6px; border: 1px s
   background-size: calc(var(--dp) * 12) calc(var(--dp) * 12);
   background-position: calc(var(--dp) * 6) calc(var(--dp) * 6); }
 .stage.light { --bg: #ecebe6; --fg: #111; --fg2: rgba(0,0,0,.55); --fg3: rgba(0,0,0,.28); --dotc: rgba(0,0,0,.1); --sel-bg: #111; --sel-fg: #f2f2f2; --panel: #ecebe6; }
+/* Colour mode: the dark look with NYC Subway line colours as identifiers. Each item carries its own colour
+   (set from script as --acc, with --acc-ink for the text on it); bullets show its number or letter. */
+.heroMeta i, .tname::before { font-size: 0; }
+.color .heroMeta i { width: calc(var(--dp) * 18); height: calc(var(--dp) * 18); display: grid; place-items: center; font: 700 calc(var(--dp) * 10) / 1 "Inter", system-ui, sans-serif; color: var(--acc-ink, #fff); }
+.color .tname::before { content: attr(data-b); width: calc(var(--dp) * 16); height: calc(var(--dp) * 16); display: grid; place-items: center; font: 700 calc(var(--dp) * 9) / 1 "Inter", system-ui, sans-serif; color: var(--acc-ink, #fff); }
+.color .tile.focus { box-shadow: 0 0 0 calc(var(--dp) * 2.5) var(--acc, var(--red)); }
+.color .pips span { width: calc(var(--dp) * 6); height: calc(var(--dp) * 6); }
+.color .seg.focus svg, .color .irow.focus svg { fill: var(--acc, var(--red)); }
 .layer { position: absolute; inset: 0; }
 .layer[hidden], .hdr[hidden] { display: none !important; }
 
@@ -55,7 +63,7 @@ kbd { font-family: var(--mono); font-size: 12px; padding: 1px 6px; border: 1px s
 /* Every segment keeps room for the red dot, so selecting one never changes its width. */
 .seg::after { content: ""; flex: none; width: calc(var(--dp) * 5); height: calc(var(--dp) * 5); border-radius: 50%; background: transparent; margin-left: calc(var(--dp) * 2); }
 .seg.focus, .seg.open { background: var(--sel-bg); color: var(--sel-fg); opacity: 1; }
-.seg.focus::after, .seg.open::after { background: var(--red); }
+.seg.focus::after, .seg.open::after { background: var(--acc, var(--red)); }
 .when { display: flex; align-items: baseline; gap: calc(var(--dp) * 14); }
 .time { font-family: var(--dot); font-weight: 900; font-size: calc(var(--dp) * 12); letter-spacing: .1em; line-height: 1; font-variant-numeric: tabular-nums; }
 .ampm { font-size: calc(var(--dp) * 11); letter-spacing: .14em; color: var(--fg2); margin-left: calc(var(--dp) * -8); }
@@ -65,16 +73,16 @@ kbd { font-family: var(--mono); font-size: 12px; padding: 1px 6px; border: 1px s
 .hero { position: absolute; left: calc(var(--dp) * 66); top: calc(var(--dp) * 248); display: grid; gap: calc(var(--dp) * 10); }
 .heroName { font-family: var(--dot); font-weight: 800; font-size: calc(var(--dp) * 64); line-height: .9; letter-spacing: .02em; white-space: nowrap; }
 .heroMeta { display: flex; align-items: center; gap: calc(var(--dp) * 10); font-size: calc(var(--dp) * 11); letter-spacing: .16em; text-transform: uppercase; color: var(--fg2); }
-.heroMeta i { width: calc(var(--dp) * 7); height: calc(var(--dp) * 7); border-radius: 50%; background: var(--red); }
+.heroMeta i { width: calc(var(--dp) * 7); height: calc(var(--dp) * 7); border-radius: 50%; background: var(--acc, var(--red)); }
 .dock { position: absolute; left: calc(var(--dp) * 58); width: calc(var(--dp) * 844); height: calc(var(--dp) * 129); border: calc(var(--dp) * 1) dashed var(--fg3); border-radius: calc(var(--dp) * 26); }
 .tile { position: absolute; width: calc(var(--dp) * 180); height: calc(var(--dp) * 101); border-radius: calc(var(--dp) * 14); overflow: hidden; filter: grayscale(1) brightness(.75) contrast(1.05); transition: filter .25s, transform .3s cubic-bezier(.3,1.4,.5,1); font-size: calc(var(--dp) * 16); box-shadow: 0 0 0 calc(var(--dp) * 1) rgba(255,255,255,.14); }
 .light .tile { filter: grayscale(1) contrast(.92); box-shadow: 0 0 0 calc(var(--dp) * 1) rgba(0,0,0,.12); }
 .tile.focus, .light .tile.focus { filter: none; transform: scale(1.08); box-shadow: 0 0 0 calc(var(--dp) * 2) var(--fg); z-index: 2; }
 .pips { position: absolute; display: flex; gap: calc(var(--dp) * 6); transform: translateX(-50%); transition: left .3s cubic-bezier(.3,1.3,.5,1), top .3s cubic-bezier(.3,1.3,.5,1), opacity .15s; }
-.pips span { width: calc(var(--dp) * 4); height: calc(var(--dp) * 4); border-radius: 50%; background: var(--red); }
+.pips span { width: calc(var(--dp) * 4); height: calc(var(--dp) * 4); border-radius: 50%; background: var(--acc, var(--red)); }
 .peek { position: absolute; width: calc(var(--dp) * 180); height: calc(var(--dp) * 101); border-radius: calc(var(--dp) * 14); border: calc(var(--dp) * 1) solid var(--fg3); opacity: .6; background: radial-gradient(circle, var(--fg3) calc(var(--dp) * 1.1), transparent calc(var(--dp) * 1.4)) 0 0 / calc(var(--dp) * 8) calc(var(--dp) * 8); }
 .tname { position: absolute; display: flex; align-items: center; justify-content: center; gap: calc(var(--dp) * 7); width: calc(var(--dp) * 220); transform: translateX(-50%); font-size: calc(var(--dp) * 11); letter-spacing: .14em; text-transform: uppercase; white-space: nowrap; transition: left .3s cubic-bezier(.3,1.3,.5,1), top .3s cubic-bezier(.3,1.3,.5,1); }
-.tname::before { content: ""; width: calc(var(--dp) * 5); height: calc(var(--dp) * 5); border-radius: 50%; background: var(--red); }
+.tname::before { content: ""; width: calc(var(--dp) * 5); height: calc(var(--dp) * 5); border-radius: 50%; background: var(--acc, var(--red)); }
 
 /* Inputs: dims Home and drops a panel under the bar */
 .veil { position: absolute; inset: 0; background: color-mix(in srgb, var(--bg) 70%, transparent); }
@@ -87,17 +95,17 @@ kbd { font-family: var(--mono); font-size: 12px; padding: 1px 6px; border: 1px s
 .irow small { color: var(--fg2); font-size: calc(var(--dp) * 10); margin-left: calc(var(--dp) * 6); }
 .irow.focus { background: var(--sel-bg); color: var(--sel-fg); }
 .irow.focus .st, .irow.focus small { color: var(--sel-fg); opacity: .7; }
-.irow.focus svg { fill: var(--red); }
+.irow.focus svg { fill: var(--acc, var(--red)); }
 
 /* Settings: two columns, choices as boxes, toggles as rows */
 .sTitle { position: absolute; left: calc(var(--dp) * 96); top: calc(var(--dp) * 62); font-family: var(--dot); font-weight: 900; font-size: calc(var(--dp) * 34); letter-spacing: .04em; line-height: 1; }
 .sSub { position: absolute; left: calc(var(--dp) * 98); top: calc(var(--dp) * 104); font-size: calc(var(--dp) * 10); letter-spacing: .16em; color: var(--fg2); text-transform: uppercase; }
 .sLabel { position: absolute; font-size: calc(var(--dp) * 11); letter-spacing: .16em; text-transform: uppercase; color: var(--fg2); }
 .choice { position: absolute; width: calc(var(--dp) * 82); height: calc(var(--dp) * 44); display: grid; place-items: center; border: calc(var(--dp) * 1) solid var(--fg3); border-radius: calc(var(--dp) * 12); font-family: var(--dot); font-weight: 900; font-size: calc(var(--dp) * 20); }
-.choice.sel::after { content: ""; position: absolute; bottom: calc(var(--dp) * 6); width: calc(var(--dp) * 5); height: calc(var(--dp) * 5); border-radius: 50%; background: var(--red); }
+.choice.sel::after { content: ""; position: absolute; bottom: calc(var(--dp) * 6); width: calc(var(--dp) * 5); height: calc(var(--dp) * 5); border-radius: 50%; background: var(--acc, var(--red)); }
 .toggle { position: absolute; left: calc(var(--dp) * 504); width: calc(var(--dp) * 360); height: calc(var(--dp) * 44); display: flex; align-items: center; justify-content: space-between; padding: 0 calc(var(--dp) * 16); border: calc(var(--dp) * 1) solid var(--fg3); border-radius: calc(var(--dp) * 12); font-size: calc(var(--dp) * 12); letter-spacing: .12em; text-transform: uppercase; }
 .toggle .val { display: flex; align-items: center; gap: calc(var(--dp) * 7); color: var(--fg2); }
-.toggle .val.on::before { content: ""; width: calc(var(--dp) * 5); height: calc(var(--dp) * 5); border-radius: 50%; background: var(--red); }
+.toggle .val.on::before { content: ""; width: calc(var(--dp) * 5); height: calc(var(--dp) * 5); border-radius: 50%; background: var(--acc, var(--red)); }
 .choice.focus, .toggle.focus { background: var(--sel-bg); color: var(--sel-fg); border-color: var(--sel-bg); }
 .toggle.focus .val { color: var(--sel-fg); }
 .sHint { position: absolute; left: calc(var(--dp) * 506); width: calc(var(--dp) * 356); font-size: calc(var(--dp) * 9.5); line-height: 1.5; letter-spacing: .04em; color: var(--fg2); }
@@ -109,7 +117,7 @@ kbd { font-family: var(--mono); font-size: 12px; padding: 1px 6px; border: 1px s
 .sTime b { font-family: var(--dot); font-weight: 900; font-size: calc(var(--dp) * 120); line-height: .85; letter-spacing: .04em; font-variant-numeric: tabular-nums; }
 .sTime span { font-size: calc(var(--dp) * 18); letter-spacing: .16em; color: var(--fg2); }
 .sDate { display: flex; align-items: center; gap: calc(var(--dp) * 12); font-size: calc(var(--dp) * 16); letter-spacing: .2em; color: var(--fg2); white-space: pre; }
-.sDate i { width: calc(var(--dp) * 6); height: calc(var(--dp) * 6); border-radius: 50%; background: var(--red); }
+.sDate i { width: calc(var(--dp) * 6); height: calc(var(--dp) * 6); border-radius: 50%; background: var(--acc, var(--red)); }
 @keyframes drift {
   0% { transform: translate(-58%, -62%); }
   33% { transform: translate(-40%, -44%); }
@@ -155,6 +163,7 @@ kbd { font-family: var(--mono); font-size: 12px; padding: 1px 6px; border: 1px s
     <div class="seggroup" role="group" aria-label="Screen mode">
       <button type="button" data-mode="dark" aria-pressed="true">Dark</button>
       <button type="button" data-mode="light" aria-pressed="false">Light</button>
+      <button type="button" data-mode="color" aria-pressed="false">Color</button>
     </div>
   </div>
   <p class="lede">A rough sketch of every screen the launcher draws, in the dot-matrix style. Pick a screen, click it, then use <kbd>←</kbd> <kbd>↑</kbd> <kbd>→</kbd> <kbd>↓</kbd>, <kbd>Enter</kbd> and <kbd>Esc</kbd>.</p>
@@ -183,6 +192,7 @@ kbd { font-family: var(--mono); font-size: 12px; padding: 1px 6px; border: 1px s
             <div class="seg" data-seg="0"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18,7V4c0,-1.1 -0.9,-2 -2,-2H8C6.9,2 6,2.9 6,4v3H5v6l3,6v3h8v-3l3,-6V7H18zM8,4h8v3h-2V5h-1v2h-2V5h-1v2H8V4z"/></svg>Inputs</div>
             <div class="seg" data-seg="1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1,9l2,2c4.97,-4.97 13.03,-4.97 18,0l2,-2C16.93,2.93 7.08,2.93 1,9zM9,17l3,3 3,-3c-1.650,-1.66 -4.34,-1.66 -6,0zM5,13l2,2c2.76,-2.76 7.24,-2.76 10,0l2,-2C15.14,9.14 8.87,9.14 5,13z"/></svg>Home Wi-Fi</div>
             <div class="seg" data-seg="2"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.14,12.94c0.04,-0.3 0.06,-0.61 0.06,-0.94c0,-0.32 -0.02,-0.64 -0.07,-0.94l2.03,-1.58c0.18,-0.14 0.23,-0.41 0.12,-0.61l-1.92,-3.32c-0.12,-0.22 -0.37,-0.29 -0.59,-0.22l-2.39,0.96c-0.5,-0.38 -1.03,-0.7 -1.62,-0.94L14.4,2.81c-0.04,-0.24 -0.24,-0.41 -0.48,-0.41h-3.84c-0.24,0 -0.43,0.17 -0.47,0.41L9.25,5.35C8.66,5.590 8.12,5.92 7.63,6.29L5.24,5.33c-0.22,-0.08 -0.47,0 -0.59,0.22L2.74,8.87C2.62,9.08 2.66,9.34 2.86,9.48l2.03,1.58C4.84,11.36 4.8,11.69 4.8,12s0.02,0.64 0.07,0.94l-2.03,1.58c-0.18,0.14 -0.23,0.41 -0.12,0.61l1.92,3.32c0.12,0.22 0.37,0.29 0.59,0.22l2.39,-0.96c0.5,0.38 1.03,0.7 1.62,0.94l0.36,2.54c0.05,0.24 0.24,0.41 0.48,0.41h3.84c0.24,0 0.44,-0.17 0.47,-0.41l0.36,-2.54c0.59,-0.24 1.13,-0.56 1.62,-0.94l2.39,0.96c0.22,0.08 0.47,0 0.59,-0.22l1.92,-3.32c0.12,-0.22 0.07,-0.47 -0.12,-0.61L19.14,12.94zM12,15.6c-1.98,0 -3.6,-1.62 -3.6,-3.6s1.62,-3.6 3.6,-3.6s3.6,1.62 3.6,3.6S13.98,15.6 12,15.6z"/></svg>Settings</div>
+            <div class="seg" data-seg="3"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 2v16a8 8 0 0 1 0-16z"/></svg><span id="modeLabel">Dark</span></div>
           </div>
           <div class="when"><span class="time" id="time">5:21</span><span class="ampm" id="ampm">PM</span><span class="date" id="date">MON  9 NOV</span></div>
         </div>
@@ -196,6 +206,7 @@ kbd { font-family: var(--mono); font-size: 12px; padding: 1px 6px; border: 1px s
     <div class="note"><h2>App grid</h2><p>Press Down from the dock and the grid slides up. The selected app's name appears under its tile with a red dot instead of the pips.</p></div>
     <div class="note"><h2>Inputs</h2><p>Home dims and a panel drops from the bar. Filled dots are devices that are on, hollow ones are empty ports. The selected row turns solid with a red icon.</p></div>
     <div class="note"><h2>Settings</h2><p>Hold OK on Settings to open. Number choices as boxes with a red dot under the current one; switches as rows with a red dot when on.</p></div>
+    <div class="note"><h2>Mode button</h2><p>The fourth segment in the top bar shows the current mode. OK cycles Dark, Light and Color. Colour mode is black with NYC Subway line colours as identifiers: numbered bullets for the dock, lettered ones for the grid.</p></div>
     <div class="note"><h2>Screensaver</h2><p>A big dotted clock that drifts slowly around the screen so nothing burns in, with the date and one red dot.</p></div>
   </div>
 </div>
@@ -224,7 +235,7 @@ kbd { font-family: var(--mono); font-size: 12px; padding: 1px 6px; border: 1px s
     { title: "PlayStation 5", port: "HDMI 1", on: true },
     { title: "Apple TV", port: "HDMI 2", on: true },
     { title: "HDMI 3", port: "", on: false },
-    { title: "HDMI 4", port: "eARC", on: false },
+    { title: "Switch 2", port: "HDMI 4", on: true },
     { title: "Live TV", port: "", live: true }
   ];
 
@@ -299,6 +310,30 @@ kbd { font-family: var(--mono); font-size: 12px; padding: 1px 6px; border: 1px s
   });
   el("sFoot", set, {}, "Back to return home");
 
+  // NYC Subway line colours; yellow and grey bullets take black text, as on the subway.
+  const LINE = { red: "#ee352e", green: "#00933c", blue: "#0039a6", orange: "#ff6319", yellow: "#fccc0a", purple: "#b933ad", lime: "#6cbe45", brown: "#996633", grey: "#a7a9ac" };
+  const DARK_INK = [LINE.yellow, LINE.grey];
+  function line(e, c, b) { e.dataset.acc = c; e.dataset.ink = DARK_INK.includes(c) ? "#000" : "#fff"; if (b) e.dataset.b = b; }
+  [LINE.red, LINE.green, LINE.blue, LINE.orange].forEach((c, i) => { line(homeTiles[i], c, String(i + 1)); line(gridTiles[i], c, String(i + 1)); });
+  [LINE.yellow, LINE.purple, LINE.lime, LINE.brown, LINE.grey, LINE.blue, LINE.green, LINE.orange].forEach((c, i) => line(gridTiles[4 + i], c, "ABCDEFGH"[i]));
+  [LINE.orange, LINE.blue, LINE.grey, LINE.purple].forEach((c, i) => line(segs[i], c));
+  [LINE.red, LINE.green, LINE.blue, LINE.orange, LINE.yellow].forEach((c, i) => line(inputRows[i], c));
+  colChoices.forEach(e => line(e, LINE.yellow));
+  rowChoices.forEach(e => line(e, LINE.lime));
+  toggles.forEach(e => line(e, LINE.purple));
+  actions.forEach(e => line(e, LINE.grey));
+
+  const MODES = ["dark", "light", "color"];
+  let mode = "dark";
+  function setMode(m) {
+    mode = m;
+    stage.classList.toggle("light", m === "light");
+    stage.classList.toggle("color", m === "color");
+    document.querySelectorAll("[data-mode]").forEach(o => o.setAttribute("aria-pressed", String(o.dataset.mode === m)));
+    $("modeLabel").textContent = m === "color" ? "Color" : m === "light" ? "Light" : "Dark";
+    paint();
+  }
+
   function paintSettings() {
     const s = state.settings;
     colChoices.forEach(c => c.classList.toggle("sel", +c.dataset.value === s.cols));
@@ -321,6 +356,14 @@ kbd { font-family: var(--mono); font-size: 12px; padding: 1px 6px; border: 1px s
     const f = current();
     Object.values(FOCUSABLE).forEach(list => list().forEach(e => e.classList.remove("focus")));
     if (f) f.classList.add("focus");
+    if (mode === "color") {
+      const acc = (f && f.dataset.acc) || LINE.red;
+      stage.style.setProperty("--acc", acc);
+      stage.style.setProperty("--acc-ink", DARK_INK.includes(acc) ? "#000" : "#fff");
+    } else {
+      stage.style.removeProperty("--acc");
+      stage.style.removeProperty("--acc-ink");
+    }
     segs.forEach(s => s.classList.toggle("open", state.screen === "inputs" && s.dataset.seg === "0"));
 
     if (state.screen === "home") {
@@ -329,6 +372,7 @@ kbd { font-family: var(--mono); font-size: 12px; padding: 1px 6px; border: 1px s
       if (onDock) {
         $("heroName").textContent = DOCK[i].name.toUpperCase();
         $("heroMeta").textContent = String(i + 1).padStart(2, "0") + " / " + String(DOCK.length).padStart(2, "0") + " · Dock";
+        document.querySelector(".heroMeta i").textContent = String(i + 1);
         homePips.style.left = d(colX(i) + TW / 2);
       }
       homePips.style.top = d(486);
@@ -340,6 +384,7 @@ kbd { font-family: var(--mono); font-size: 12px; padding: 1px 6px; border: 1px s
       if (onTile) {
         const x = +f.dataset.x + TW / 2, y = +f.dataset.y + TH + 12;
         gridName.textContent = f.dataset.name;
+        gridName.dataset.b = f.dataset.b || "";
         gridName.style.left = d(x); gridName.style.top = d(y);
         gridPips.style.left = d(x); gridPips.style.top = d(+f.dataset.y + TH + 16);
       }
@@ -381,6 +426,7 @@ kbd { font-family: var(--mono); font-size: 12px; padding: 1px 6px; border: 1px s
       const i = +f.dataset.seg;
       if (i === 0) return show("inputs");
       if (i === 2) return show("settings");
+      if (i === 3) return setMode(MODES[(MODES.indexOf(mode) + 1) % MODES.length]);
       return toast("Opens Wi-Fi settings");
     }
     if (f.classList.contains("tile")) return toast("Opening " + f.dataset.name);
@@ -419,10 +465,7 @@ kbd { font-family: var(--mono); font-size: 12px; padding: 1px 6px; border: 1px s
   });
   screen.addEventListener("click", () => screen.focus({ preventScroll: true }));
   document.querySelectorAll("[data-screen]").forEach(b => b.addEventListener("click", () => { show(b.dataset.screen); screen.focus({ preventScroll: true }); }));
-  document.querySelectorAll("[data-mode]").forEach(b => b.addEventListener("click", () => {
-    stage.classList.toggle("light", b.dataset.mode === "light");
-    document.querySelectorAll("[data-mode]").forEach(o => o.setAttribute("aria-pressed", String(o === b)));
-  }));
+  document.querySelectorAll("[data-mode]").forEach(b => b.addEventListener("click", () => setMode(b.dataset.mode)));
 
   function tick() {
     const t = new Date(), h = t.getHours(), hm = ((h % 12) || 12) + ":" + String(t.getMinutes()).padStart(2, "0"), ap = h < 12 ? "AM" : "PM";
