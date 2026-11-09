@@ -36,6 +36,9 @@ per code block, and say what each command does and what output to expect.
 
 ## The launcher
 
+- Design direction: the **dot-matrix** look in `docs/designs/dot-matrix/` (in progress). The glass design
+  in `docs/designs/glass/` is set aside for later; no theme switcher between the two is planned. The launcher
+  as it was before either design is the git tag `before-dot-matrix`.
 - The typeface is Inter, not Outfit: `res/font/inter.ttf`, trimmed to Outfit's characters and weights
   200 to 500 so the APK stays small. CI fails the build at 400 KB (409,600 bytes); the release APK was
   406,983 bytes after the switch, so there is little room. If a change pushes it over, trim the font

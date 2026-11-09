@@ -1,0 +1,224 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dot Matrix Home Sketch</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Doto:wght@400..900&family=Space+Mono:wght@400;700&family=Inter:wght@400;500&display=swap">
+<style>
+/* Layout: one TV screen as the page's subject, a short caption and a list of what changed below it. Single dark look on purpose. */
+:root {
+  --page: #0b0b0b;
+  --ink: #f2f2f2;
+  --muted: #8c8c8c;
+  --line: #262626;
+  --red: #d71921;
+  --dot: "Doto", "Space Mono", ui-monospace, monospace;
+  --mono: "Space Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5; }
+.page { max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 56px; display: grid; gap: 22px; }
+.top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px; }
+h1 { margin: 0; font-family: var(--dot); font-weight: 800; font-size: clamp(30px, 5vw, 48px); letter-spacing: .02em; line-height: 1; }
+.tag { margin: 0; font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.tag b { color: var(--red); font-weight: 700; }
+.lede { margin: 0; color: var(--muted); max-width: 68ch; }
+kbd { font-family: var(--mono); font-size: 12px; padding: 1px 6px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink); }
+
+.tv { background: #000; padding: clamp(4px, .7%, 9px); border-radius: 10px; box-shadow: 0 0 0 1px #1d1d1d, 0 30px 70px -30px rgba(0,0,0,.9); }
+.screen { position: relative; container-type: inline-size; aspect-ratio: 16 / 9; width: 100%; max-width: 100%; overflow: hidden; border-radius: 3px; background: #000; outline: none; cursor: pointer; }
+.screen:focus-visible { box-shadow: 0 0 0 2px var(--red); }
+
+.stage { --dp: calc(100cqw / 960); position: absolute; inset: 0; color: #f2f2f2; font-family: var(--mono); user-select: none;
+  background-color: #000;
+  background-image: radial-gradient(circle, rgba(255,255,255,.075) calc(var(--dp) * 1.1), transparent calc(var(--dp) * 1.3));
+  background-size: calc(var(--dp) * 12) calc(var(--dp) * 12);
+  background-position: calc(var(--dp) * 6) calc(var(--dp) * 6); }
+
+/* Header: segmented bar on the left, time and date on the right */
+.hdr { position: absolute; left: calc(var(--dp) * 56); right: calc(var(--dp) * 56); top: calc(var(--dp) * 26); display: flex; align-items: center; justify-content: space-between; }
+.bar { display: flex; height: calc(var(--dp) * 40); padding: calc(var(--dp) * 3); gap: calc(var(--dp) * 3); border: calc(var(--dp) * 1) solid rgba(255,255,255,.28); border-radius: calc(var(--dp) * 20); background: #000; }
+.seg { display: flex; align-items: center; gap: calc(var(--dp) * 8); padding: 0 calc(var(--dp) * 15) 0 calc(var(--dp) * 12); border-radius: calc(var(--dp) * 17); font-size: calc(var(--dp) * 12); letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.82); white-space: nowrap; }
+.seg svg { width: calc(var(--dp) * 17); height: calc(var(--dp) * 17); fill: currentColor; flex: none; }
+.seg.focus { background: #f2f2f2; color: #000; }
+.seg.focus::after { content: ""; width: calc(var(--dp) * 5); height: calc(var(--dp) * 5); border-radius: 50%; background: var(--red); margin-left: calc(var(--dp) * 2); }
+.when { display: flex; align-items: baseline; gap: calc(var(--dp) * 14); }
+.time { font-family: var(--dot); font-weight: 900; font-size: calc(var(--dp) * 12); letter-spacing: .1em; line-height: 1; font-variant-numeric: tabular-nums; }
+.ampm { font-size: calc(var(--dp) * 11); letter-spacing: .14em; color: rgba(255,255,255,.6); margin-left: calc(var(--dp) * -8); }
+.date { font-size: calc(var(--dp) * 12); letter-spacing: .14em; color: rgba(255,255,255,.6); white-space: pre; }
+
+/* Shelf name, with a red marker dot and the app's place in the dock */
+.hero { position: absolute; left: calc(var(--dp) * 66); top: calc(var(--dp) * 248); display: grid; gap: calc(var(--dp) * 10); }
+.heroName { font-family: var(--dot); font-weight: 800; font-size: calc(var(--dp) * 64); line-height: .9; letter-spacing: .02em; white-space: nowrap; }
+.heroMeta { display: flex; align-items: center; gap: calc(var(--dp) * 10); font-size: calc(var(--dp) * 11); letter-spacing: .16em; text-transform: uppercase; color: rgba(255,255,255,.55); }
+.heroMeta i { width: calc(var(--dp) * 7); height: calc(var(--dp) * 7); border-radius: 50%; background: var(--red); }
+
+/* Dock: thin outline instead of a band; tiles in greyscale until focused */
+.dock { position: absolute; left: calc(var(--dp) * 58); top: calc(var(--dp) * 346); width: calc(var(--dp) * 844); height: calc(var(--dp) * 129); border: calc(var(--dp) * 1) dashed rgba(255,255,255,.22); border-radius: calc(var(--dp) * 26); }
+.tile { position: absolute; top: calc(var(--dp) * 360); width: calc(var(--dp) * 180); height: calc(var(--dp) * 101); border-radius: calc(var(--dp) * 14); overflow: hidden; filter: grayscale(1) brightness(.75) contrast(1.05); transition: filter .25s, transform .3s cubic-bezier(.3,1.4,.5,1); font-size: calc(var(--dp) * 16); }
+.tile.focus { filter: none; transform: scale(1.08); box-shadow: 0 0 0 calc(var(--dp) * 2) #f2f2f2; z-index: 2; }
+.pips { position: absolute; top: calc(var(--dp) * 486); display: flex; gap: calc(var(--dp) * 6); transform: translateX(-50%); transition: left .3s cubic-bezier(.3,1.3,.5,1); }
+.pips span { width: calc(var(--dp) * 4); height: calc(var(--dp) * 4); border-radius: 50%; background: var(--red); }
+.peek { position: absolute; top: calc(var(--dp) * 518); width: calc(var(--dp) * 180); height: calc(var(--dp) * 101); border-radius: calc(var(--dp) * 14); border: calc(var(--dp) * 1) solid rgba(255,255,255,.14); background: radial-gradient(circle, rgba(255,255,255,.12) calc(var(--dp) * 1.1), transparent calc(var(--dp) * 1.4)) 0 0 / calc(var(--dp) * 8) calc(var(--dp) * 8); }
+
+/* Light mode: warm paper white, black ink, the same red */
+.stage.light { color: #111; background-color: #ecebe6; background-image: radial-gradient(circle, rgba(0,0,0,.1) calc(var(--dp) * 1.1), transparent calc(var(--dp) * 1.3)); }
+.light .bar { background: #ecebe6; border-color: rgba(0,0,0,.3); }
+.light .seg { color: rgba(0,0,0,.78); }
+.light .seg.focus { background: #111; color: #f2f2f2; }
+.light .ampm, .light .date { color: rgba(0,0,0,.55); }
+.light .heroMeta { color: rgba(0,0,0,.5); }
+.light .dock { border-color: rgba(0,0,0,.25); }
+.light .tile { filter: grayscale(1) contrast(.92); box-shadow: 0 0 0 calc(var(--dp) * 1) rgba(0,0,0,.12); }
+.light .tile.focus { filter: none; box-shadow: 0 0 0 calc(var(--dp) * 2) #111; }
+.light .peek { border-color: rgba(0,0,0,.16); background-image: radial-gradient(circle, rgba(0,0,0,.14) calc(var(--dp) * 1.1), transparent calc(var(--dp) * 1.4)); }
+
+.mode { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; gap: 2px; }
+.mode button { border: 0; background: transparent; color: var(--muted); font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; padding: 5px 14px; border-radius: 999px; cursor: pointer; }
+.mode button[aria-pressed="true"] { background: var(--ink); color: var(--page); }
+.mode button:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+
+/* Stand-in app artwork */
+.b { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: .35em; font-family: "Inter", system-ui, sans-serif; }
+.b-netflix { background: #fff; color: #e50914; font-weight: 800; font-size: 2.1em; }
+.b-netflix span { display: inline-block; transform: scaleY(1.25); }
+.b-youtube { background: #f2f2f2; color: #212121; font-weight: 700; font-size: 1.55em; letter-spacing: -.04em; }
+.b-youtube i { width: 1.45em; height: 1em; border-radius: .28em; background: #ff0000; position: relative; }
+.b-youtube i::after { content: ""; position: absolute; left: .55em; top: .27em; border-left: .42em solid #fff; border-top: .23em solid transparent; border-bottom: .23em solid transparent; }
+.b-prime { background: #0f79f3; color: #fff; font-weight: 600; font-size: 1.45em; flex-direction: column; gap: 0; line-height: 1; }
+.b-prime small { display: block; width: 2.6em; height: .45em; border-bottom: .12em solid #fff; border-radius: 0 0 50% 50%; }
+.b-disney { background: radial-gradient(120% 140% at 30% 20%, #1c4fbf, #0a1a4d 70%); color: #fff; font-weight: 500; font-style: italic; font-size: 1.75em; }
+
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.note { border-top: 1px solid var(--line); padding-top: 12px; display: grid; gap: 4px; min-width: 0; }
+.note h2 { margin: 0; font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.note p { margin: 0; color: var(--muted); font-size: 14px; }
+@media (prefers-reduced-motion: reduce) { .tile, .pips { transition: none; } }
+</style>
+
+<div class="page">
+  <div class="top">
+    <h1>DOT MATRIX</h1>
+    <div class="mode" role="group" aria-label="Screen mode">
+      <button type="button" data-mode="dark" aria-pressed="true">Dark</button>
+      <button type="button" data-mode="light" aria-pressed="false">Light</button>
+    </div>
+  </div>
+  <p class="lede">A rough take on the dot-matrix look with your current layout. Click the screen and use <kbd>←</kbd> <kbd>→</kbd> along the dock, <kbd>↑</kbd> for the bar, <kbd>↓</kbd> to come back.</p>
+
+  <div class="tv">
+    <div class="screen" id="screen" tabindex="0" role="application" aria-label="Dot matrix home screen sketch. Left and right move along the dock, up moves to the button bar.">
+      <div class="stage" id="stage">
+        <div class="hdr">
+          <div class="bar" id="bar">
+            <div class="seg"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18,7V4c0,-1.1 -0.9,-2 -2,-2H8C6.9,2 6,2.9 6,4v3H5v6l3,6v3h8v-3l3,-6V7H18zM8,4h8v3h-2V5h-1v2h-2V5h-1v2H8V4z"/></svg>Inputs</div>
+            <div class="seg"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1,9l2,2c4.97,-4.97 13.03,-4.97 18,0l2,-2C16.93,2.93 7.08,2.93 1,9zM9,17l3,3 3,-3c-1.65,-1.66 -4.34,-1.66 -6,0zM5,13l2,2c2.76,-2.76 7.24,-2.76 10,0l2,-2C15.14,9.14 8.87,9.14 5,13z"/></svg>Home Wi-Fi</div>
+            <div class="seg"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.14,12.94c0.04,-0.3 0.06,-0.61 0.06,-0.94c0,-0.32 -0.02,-0.64 -0.07,-0.94l2.03,-1.58c0.18,-0.14 0.23,-0.41 0.12,-0.61l-1.92,-3.32c-0.12,-0.22 -0.37,-0.29 -0.59,-0.22l-2.39,0.96c-0.5,-0.38 -1.03,-0.7 -1.62,-0.94L14.4,2.81c-0.04,-0.24 -0.24,-0.41 -0.48,-0.41h-3.84c-0.24,0 -0.43,0.17 -0.47,0.41L9.25,5.35C8.66,5.59 8.12,5.92 7.63,6.29L5.24,5.33c-0.22,-0.08 -0.47,0 -0.59,0.22L2.74,8.87C2.62,9.08 2.66,9.34 2.86,9.48l2.03,1.58C4.84,11.36 4.8,11.69 4.8,12s0.02,0.64 0.07,0.94l-2.03,1.58c-0.18,0.14 -0.23,0.41 -0.12,0.61l1.92,3.32c0.12,0.22 0.37,0.29 0.59,0.22l2.39,-0.96c0.5,0.38 1.03,0.7 1.62,0.94l0.36,2.54c0.05,0.24 0.24,0.41 0.48,0.41h3.84c0.24,0 0.44,-0.17 0.47,-0.41l0.36,-2.54c0.59,-0.24 1.13,-0.56 1.62,-0.94l2.39,0.96c0.22,0.08 0.47,0 0.59,-0.22l1.92,-3.32c0.12,-0.22 0.07,-0.47 -0.12,-0.61L19.14,12.94zM12,15.6c-1.98,0 -3.6,-1.62 -3.6,-3.6s1.62,-3.6 3.6,-3.6s3.6,1.62 3.6,3.6S13.98,15.6 12,15.6z"/></svg>Settings</div>
+          </div>
+          <div class="when">
+            <span class="time" id="time">5:13</span><span class="ampm" id="ampm">PM</span>
+            <span class="date" id="date">MON  9 NOV</span>
+          </div>
+        </div>
+
+        <div class="hero">
+          <div class="heroName" id="heroName">NETFLIX</div>
+          <div class="heroMeta"><i></i><span id="heroMeta">01 / 04 · Dock</span></div>
+        </div>
+
+        <div class="dock"></div>
+        <div id="tiles"></div>
+        <div class="pips" id="pips"><span></span><span></span><span></span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note"><h2>Type</h2><p>Time, date and the app name in Doto, a free dot-matrix font. Small labels in a typewriter-style monospace font.</p></div>
+    <div class="note"><h2>Colour</h2><p>Black, white and one red. Red only marks what's selected: the dot in the bar, the marker by the app name and the pips under the tile.</p></div>
+    <div class="note"><h2>Apps</h2><p>Tiles sit in black and white, and the selected one switches to full colour. The glow, gradient and frosted band are gone, and a faint dot grid fills the background.</p></div>
+    <div class="note"><h2>On the TV</h2><p>All doable offline. It would need the dot-matrix font added to the app, which costs space against the 400 KB limit, so the font would be trimmed to digits and capital letters.</p></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const APPS = [
+    { name: "NETFLIX", html: '<div class="b b-netflix"><span>NETFLIX</span></div>' },
+    { name: "YOUTUBE", html: '<div class="b b-youtube"><i></i>YouTube</div>' },
+    { name: "PRIME VIDEO", html: '<div class="b b-prime">prime video<small></small></div>' },
+    { name: "DISNEY+", html: '<div class="b b-disney">Disney+</div>' }
+  ];
+  const PAD = 56, CELL = 212, TW = 180;
+  const d = v => "calc(var(--dp) * " + v + ")";
+  const tilesEl = document.getElementById("tiles"), segs = Array.from(document.querySelectorAll(".seg"));
+  const screen = document.getElementById("screen");
+  const state = { zone: "dock", i: 0, seg: 0 };
+
+  const tiles = APPS.map((a, i) => {
+    const el = document.createElement("div");
+    el.className = "tile";
+    el.innerHTML = a.html;
+    el.style.left = d(PAD + i * CELL + (CELL - TW) / 2);
+    el.addEventListener("click", e => { e.stopPropagation(); state.zone = "dock"; state.i = i; render(); screen.focus({ preventScroll: true }); });
+    tilesEl.appendChild(el);
+    return el;
+  });
+  for (let i = 0; i < 4; i++) {
+    const p = document.createElement("div");
+    p.className = "peek";
+    p.style.left = d(PAD + i * CELL + (CELL - TW) / 2);
+    tilesEl.appendChild(p);
+  }
+  segs.forEach((s, i) => s.addEventListener("mouseenter", () => { state.zone = "bar"; state.seg = i; render(); }));
+
+  function render() {
+    tiles.forEach((t, i) => t.classList.toggle("focus", state.zone === "dock" && state.i === i));
+    segs.forEach((s, i) => s.classList.toggle("focus", state.zone === "bar" && state.seg === i));
+    document.getElementById("heroName").textContent = APPS[state.i].name;
+    document.getElementById("heroMeta").textContent = String(state.i + 1).padStart(2, "0") + " / " + String(APPS.length).padStart(2, "0") + " · Dock";
+    const pips = document.getElementById("pips");
+    pips.style.left = d(PAD + state.i * CELL + CELL / 2);
+    pips.style.opacity = state.zone === "dock" ? "1" : "0";
+  }
+
+  function tick() {
+    const t = new Date(), h = t.getHours();
+    document.getElementById("time").textContent = ((h % 12) || 12) + ":" + String(t.getMinutes()).padStart(2, "0");
+    document.getElementById("ampm").textContent = h < 12 ? "AM" : "PM";
+    const wd = t.toLocaleDateString("en-GB", { weekday: "long" }).slice(0, 3).toUpperCase();
+    const mo = t.toLocaleDateString("en-GB", { month: "long" }).slice(0, 3).toUpperCase();
+    document.getElementById("date").textContent = wd + "  " + t.getDate() + " " + mo;
+  }
+
+  document.addEventListener("keydown", e => {
+    const k = { ArrowLeft: "l", ArrowRight: "r", ArrowUp: "u", ArrowDown: "d" }[e.key];
+    if (!k) return;
+    e.preventDefault();
+    if (state.zone === "dock") {
+      if (k === "l" && state.i > 0) state.i--;
+      if (k === "r" && state.i < APPS.length - 1) state.i++;
+      if (k === "u") { state.zone = "bar"; state.seg = Math.min(2, Math.floor(state.i * 3 / APPS.length)); }
+    } else {
+      if (k === "l" && state.seg > 0) state.seg--;
+      if (k === "r" && state.seg < segs.length - 1) state.seg++;
+      if (k === "d") state.zone = "dock";
+    }
+    render();
+  });
+  screen.addEventListener("click", () => screen.focus({ preventScroll: true }));
+
+  document.querySelectorAll(".mode button").forEach(b => b.addEventListener("click", () => {
+    document.getElementById("stage").classList.toggle("light", b.dataset.mode === "light");
+    document.querySelectorAll(".mode button").forEach(o => o.setAttribute("aria-pressed", String(o === b)));
+  }));
+
+  render();
+  tick();
+  setInterval(tick, 15000);
+})();
+</script>

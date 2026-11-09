@@ -1,0 +1,641 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>X90J Home Mockup</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@200..700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: the TV screen is the hero, drawn at 960x540 dp and scaled to fit; controls and notes sit below it. */
+:root {
+  --bg: #e7e9ee;
+  --wall: #d9dce3;
+  --panel: #f6f7f9;
+  --fg: #15181e;
+  --muted: #5b6372;
+  --line: #cfd4dc;
+  --accent: #1f6b46;
+  --accent-ink: #ffffff;
+  --display: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d0f13; --wall: #14171d; --panel: #171a21; --fg: #e8ebf0; --muted: #9aa3b2;
+    --line: #2a2f39; --accent: #9be8b0; --accent-ink: #0d0f13; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d0f13; --wall: #14171d; --panel: #171a21; --fg: #e8ebf0; --muted: #9aa3b2;
+  --line: #2a2f39; --accent: #9be8b0; --accent-ink: #0d0f13; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.5; }
+.page {
+  max-width: 1180px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 56px;
+  display: grid; gap: 28px;
+}
+.intro { display: grid; gap: 6px; max-width: 70ch; }
+.eyebrow { margin: 0; font-size: 12px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+h1 { margin: 0; font-family: var(--display); font-weight: 300; font-size: clamp(30px, 4.4vw, 46px); letter-spacing: -.03em; line-height: 1.1; text-wrap: balance; }
+h2 { margin: 0; font-family: var(--display); font-weight: 500; font-size: 17px; letter-spacing: -.01em; }
+.lede { margin: 0; color: var(--muted); }
+kbd { font-family: var(--mono); font-size: 12px; padding: 1px 6px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; background: var(--panel); color: var(--fg); }
+code { font-family: var(--mono); font-size: .9em; }
+
+/* The TV */
+.wall { background: var(--wall); border-radius: 18px; padding: clamp(14px, 3vw, 36px); }
+.tv { background: #050505; padding: clamp(4px, .7%, 9px); border-radius: clamp(6px, 1vw, 12px); box-shadow: 0 24px 60px -24px rgba(0,0,0,.55); max-width: 1040px; margin: 0 auto; }
+.screen { position: relative; container-type: inline-size; aspect-ratio: 16 / 9; width: 100%; max-width: 100%; overflow: hidden; border-radius: 3px; background: #000; outline: none; cursor: pointer; }
+.screen:focus-visible { box-shadow: 0 0 0 3px var(--accent); }
+.hint { text-align: center; color: var(--muted); font-size: 13px; margin: 12px 0 0; }
+
+.stage { --dp: calc(100cqw / 960); position: absolute; inset: 0; font-family: "Inter", system-ui, sans-serif; color: #fff; background-color: var(--tvbg, #000); background-size: cover; background-position: center; -webkit-font-smoothing: antialiased; user-select: none; }
+.ambient { position: absolute; inset: 0; opacity: 0; transition: opacity .5s ease; pointer-events: none; }
+.hero { position: absolute; left: calc(var(--dp) * 68); transform: translateY(-100%); font-size: calc(var(--dp) * 48); font-weight: var(--herow, 300); letter-spacing: -.02em; line-height: 1.21; white-space: nowrap; opacity: 0; transition: opacity .16s ease; pointer-events: none; }
+
+.hdr { position: absolute; left: calc(var(--dp) * 56); right: calc(var(--dp) * 56); top: calc(var(--dp) * 26); display: flex; align-items: flex-end; justify-content: space-between; gap: calc(var(--dp) * 16); }
+.leftBlock { min-width: 0; flex: 1; }
+.clockrow { display: flex; align-items: flex-end; }
+.clock { font-size: calc(var(--dp) * 52); font-weight: var(--clockw, 300); letter-spacing: -.04em; line-height: 1.21; font-variant-numeric: tabular-nums; }
+.ampm { font-size: calc(var(--dp) * 15); font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: rgba(255,255,255,.7); margin: 0 0 calc(var(--dp) * 8) calc(var(--dp) * 6); }
+.vdiv { width: calc(var(--dp) * 1); height: calc(var(--dp) * 26); background: rgba(255,255,255,.2); margin: 0 calc(var(--dp) * 16) calc(var(--dp) * 8); flex: none; }
+.date { font-size: calc(var(--dp) * 14); letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.65); margin-bottom: calc(var(--dp) * 9); white-space: pre; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.hdr.stacked { align-items: flex-start; }
+.hdr.stacked .clockrow { flex-wrap: wrap; }
+.hdr.stacked .vdiv { display: none; }
+.hdr.stacked .date { flex-basis: 100%; margin: calc(var(--dp) * 1) 0 0 calc(var(--dp) * 4); }
+.hdr.stacked .pills { margin: calc(var(--dp) * 26) 0 0; }
+/* One bar of buttons on the left, the time block on the right; the time's line is the bar's height. */
+.hdr.v2 { flex-direction: row-reverse; align-items: center; }
+.hdr.v2 .leftBlock { text-align: right; }
+.hdr.v2 .clockrow { justify-content: flex-end; align-items: center; }
+.hdr.v2 .clock { font-size: calc(var(--dp) * 14); line-height: calc(var(--dp) * 42); letter-spacing: .02em; }
+.hdr.v2 .ampm { font-size: calc(var(--dp) * 14); margin: 0 0 0 calc(var(--dp) * 5); }
+.hdr.v2 .vdiv { height: calc(var(--dp) * 14); margin: 0 calc(var(--dp) * 12); }
+.hdr.v2 .date { margin: 0; }
+.hdr.v2.stacked .date { margin: calc(var(--dp) * 1) calc(var(--dp) * 2) 0 0; text-align: right; }
+.hdr.v2 .pills { margin: 0; height: calc(var(--dp) * 42); padding: calc(var(--dp) * 3); gap: calc(var(--dp) * 2); border-radius: calc(var(--dp) * 21); background: linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,.08)); box-shadow: inset 0 0 0 calc(var(--dp) * 1) rgba(255,255,255,.22); }
+.hdr.v2.tint .pills { background: rgba(6,10,24,.42); box-shadow: inset 0 0 0 calc(var(--dp) * 1) rgba(255,255,255,.1); }
+.hdr.v2 .pill { height: 100%; margin: 0; padding: 0 calc(var(--dp) * 16) 0 calc(var(--dp) * 13); border-radius: calc(var(--dp) * 18); background: none; box-shadow: none; cursor: pointer; }
+.hdr.v2 .pill.focus { background: rgba(255,255,255,.96); color: #111; }
+.pills { display: flex; flex: none; margin-bottom: calc(var(--dp) * 6); }
+.pill { height: calc(var(--dp) * 42); margin-left: calc(var(--dp) * 10); padding: 0 calc(var(--dp) * 20) 0 calc(var(--dp) * 16); border-radius: calc(var(--dp) * 21); display: flex; align-items: center; gap: calc(var(--dp) * 9); font-size: calc(var(--dp) * 15); font-weight: 500; letter-spacing: .01em; white-space: nowrap; max-width: calc(var(--dp) * 180); color: #fff; background: linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,.08)); box-shadow: inset 0 0 0 calc(var(--dp) * 1) rgba(255,255,255,.22); transition: background-color .15s, color .15s; }
+.pill span { overflow: hidden; text-overflow: ellipsis; }
+.pill svg { width: calc(var(--dp) * 22); height: calc(var(--dp) * 22); fill: currentColor; flex: none; }
+.pill.focus { background: rgba(255,255,255,.96); color: #111; box-shadow: none; }
+
+.gridvp { position: absolute; left: 0; right: 0; top: calc(var(--dp) * 116); bottom: 0; overflow: hidden; }
+.track { position: absolute; left: 0; top: 0; width: 100%; height: 100%; transition: transform .42s cubic-bezier(.2,.8,.2,1); }
+.band { position: absolute; background: #141416; box-shadow: inset 0 0 0 calc(var(--dp) * 1) rgba(255,255,255,.12); }
+.band.frost { background: linear-gradient(180deg, rgba(255,255,255,.15), rgba(255,255,255,.06)); -webkit-backdrop-filter: blur(calc(var(--dp) * 28)) saturate(1.5); backdrop-filter: blur(calc(var(--dp) * 28)) saturate(1.5); box-shadow: inset 0 0 0 calc(var(--dp) * 1) rgba(255,255,255,.2), inset 0 calc(var(--dp) * 1.5) 0 rgba(255,255,255,.22); }
+.card { position: absolute; overflow: hidden; background: #1c1c1e; transition: transform .38s cubic-bezier(.3,1.45,.5,1); display: flex; align-items: center; justify-content: center; font-size: calc(var(--dp) * 16 * var(--k, 1)); }
+.card.focus { transform: scale(1.1); z-index: 2; }
+.name { position: absolute; text-align: center; font-size: calc(var(--dp) * 14); font-weight: 500; letter-spacing: .02em; color: rgba(255,255,255,.95); opacity: 0; transform: translateY(calc(var(--dp) * -6)); transition: opacity .2s, transform .25s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.name.show { opacity: 1; transform: none; }
+
+.glass { position: absolute; left: 0; top: 0; pointer-events: none; opacity: 0; z-index: 5; background: linear-gradient(180deg, rgba(255,255,255,.24), rgba(255,255,255,.07)); box-shadow: inset 0 0 0 calc(var(--dp) * 1.5) rgba(255,255,255,.8), 0 0 calc(var(--dp) * 2) rgba(255,255,255,.35), 0 0 calc(var(--dp) * 9) rgba(255,255,255,.19); transition: transform .46s cubic-bezier(.3,1.3,.5,1), width .46s cubic-bezier(.3,1.3,.5,1), height .46s cubic-bezier(.3,1.3,.5,1), opacity .2s; overflow: hidden; }
+.glass::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 45%; background: linear-gradient(180deg, rgba(255,255,255,.4), rgba(255,255,255,0)); }
+
+.toast { position: absolute; left: 50%; bottom: calc(var(--dp) * 28); transform: translate(-50%, calc(var(--dp) * 10)); padding: calc(var(--dp) * 10) calc(var(--dp) * 20); border-radius: calc(var(--dp) * 14); font-size: calc(var(--dp) * 15); font-weight: 500; background: rgba(28,28,32,.88); box-shadow: inset 0 0 0 calc(var(--dp) * 1) rgba(255,255,255,.16); opacity: 0; transition: opacity .2s, transform .25s; white-space: nowrap; z-index: 9; pointer-events: none; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* Stand-in app artwork, sized in em so it follows the tile */
+.b { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: .35em; font-family: "Inter", system-ui, sans-serif; }
+.b-netflix { background: #fff; color: #e50914; font-weight: 800; font-size: 2.15em; letter-spacing: .01em; }
+.b-netflix span { display: inline-block; transform: scaleY(1.25); }
+.b-youtube { background: #f2f2f2; color: #212121; font-weight: 700; font-size: 1.55em; letter-spacing: -.04em; }
+.b-youtube i { width: 1.45em; height: 1em; border-radius: .28em; background: #ff0000; position: relative; }
+.b-youtube i::after { content: ""; position: absolute; left: .55em; top: .27em; border-left: .42em solid #fff; border-top: .23em solid transparent; border-bottom: .23em solid transparent; }
+.b-prime { background: #0f79f3; color: #fff; font-weight: 600; font-size: 1.45em; letter-spacing: -.02em; flex-direction: column; gap: 0; line-height: 1; }
+.b-prime small { display: block; width: 2.6em; height: .45em; margin-top: .05em; border-bottom: .12em solid #fff; border-radius: 0 0 50% 50%; }
+.b-disney { background: radial-gradient(120% 140% at 30% 20%, #1c4fbf, #0a1a4d 70%); color: #fff; font-weight: 500; font-style: italic; font-size: 1.75em; letter-spacing: -.03em; }
+.b-pluto { background: #0b0b0b; color: #fff200; font-weight: 800; font-size: 1.55em; letter-spacing: -.02em; }
+.b-max { background: #002be7; color: #fff; font-weight: 800; font-size: 2em; letter-spacing: -.05em; }
+.b-hulu { background: #0b0c0f; color: #1ce783; font-weight: 800; font-size: 2em; letter-spacing: -.04em; }
+.b-spotify { background: #121212; color: #fff; font-weight: 700; font-size: 1.4em; letter-spacing: -.02em; }
+.b-spotify i { width: 1.15em; height: 1.15em; border-radius: 50%; background: #1ed760; }
+.b-plex { background: #1f1f1f; color: #fff; font-weight: 700; font-size: 1.75em; letter-spacing: -.02em; }
+.b-plex b { color: #e5a00d; font-weight: 800; }
+.b-play { background: #f3f3f3; color: #5f6368; font-weight: 500; font-size: 1.25em; letter-spacing: -.01em; }
+.b-play i { width: 0; height: 0; border-left: 1em solid #01875f; border-top: .62em solid transparent; border-bottom: .62em solid transparent; filter: drop-shadow(.12em 0 0 #ffd400); }
+.b-twitch { background: #9146ff; color: #fff; font-weight: 800; font-size: 1.65em; letter-spacing: -.03em; }
+.b-vlc { background: #ff8800; color: #fff; font-weight: 800; font-size: 1.9em; letter-spacing: .02em; }
+
+/* Controls */
+.controls { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 20px; align-items: start; }
+.card-ui { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; display: grid; gap: 14px; min-width: 0; }
+.remote { justify-items: center; }
+.remote h2 { justify-self: start; }
+.dpad { position: relative; width: 168px; height: 168px; border-radius: 50%; background: #1b1d22; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08), 0 8px 20px -10px rgba(0,0,0,.5); }
+.dpad button { position: absolute; border: 0; background: transparent; color: #cfd4dc; font: inherit; cursor: pointer; border-radius: 10px; display: grid; place-items: center; }
+.dpad button:hover { color: #fff; background: rgba(255,255,255,.06); }
+.dpad button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.dpad svg { width: 22px; height: 22px; fill: currentColor; }
+.dpad .up { left: 56px; top: 6px; width: 56px; height: 44px; }
+.dpad .down { left: 56px; bottom: 6px; width: 56px; height: 44px; }
+.dpad .left { left: 6px; top: 56px; width: 44px; height: 56px; }
+.dpad .right { right: 6px; top: 56px; width: 44px; height: 56px; }
+.dpad .ok { left: 50px; top: 50px; width: 68px; height: 68px; border-radius: 50%; background: #2a2d34; color: #fff; font-weight: 600; font-size: 14px; letter-spacing: .04em; }
+.dpad .ok:hover { background: #33373f; }
+.rbtns { display: flex; gap: 10px; }
+.rbtn { border: 1px solid var(--line); background: var(--bg); color: var(--fg); font: inherit; font-size: 13px; font-weight: 500; padding: 7px 14px; border-radius: 999px; cursor: pointer; }
+.rbtn:hover { border-color: var(--muted); }
+.rbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.keys { margin: 0; font-size: 12.5px; color: var(--muted); text-align: center; }
+
+.settings { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); column-gap: 22px; row-gap: 16px; }
+.settings h2 { grid-column: 1 / -1; }
+.field { display: grid; gap: 6px; min-width: 0; align-content: start; }
+.field > label, .field > .lbl { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.field .key { font-family: var(--mono); font-size: 11.5px; color: var(--muted); text-transform: none; letter-spacing: 0; font-weight: 400; }
+select, input[type="text"] { font: inherit; font-size: 14px; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; width: 100%; min-width: 0; }
+select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.presets { display: flex; flex-wrap: wrap; gap: 8px; grid-column: 1 / -1; }
+.chip { border: 1px solid var(--line); background: var(--bg); color: var(--fg); font: inherit; font-size: 13px; font-weight: 500; padding: 6px 14px; border-radius: 999px; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.colorrow { display: flex; gap: 8px; align-items: center; }
+input[type="color"] { width: 44px; height: 36px; padding: 2px; border: 1px solid var(--line); border-radius: 9px; background: var(--bg); cursor: pointer; flex: none; }
+.check { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.check input { width: 16px; height: 16px; accent-color: var(--accent); }
+
+.config { display: grid; gap: 10px; }
+.config p { margin: 0; color: var(--muted); max-width: 70ch; }
+.codebox { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow-x: auto; }
+.codebox pre { margin: 0; padding: 16px 18px; font-family: var(--mono); font-size: 13px; line-height: 1.6; }
+.copy { position: absolute; top: 10px; right: 10px; }
+
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+.notes ul { margin: 0; padding-left: 18px; color: var(--muted); display: grid; gap: 4px; }
+.notes li code { color: var(--fg); }
+.srcs { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.srcs td { padding: 6px 0; border-top: 1px solid var(--line); vertical-align: top; }
+.srcs td:first-child { padding-right: 14px; white-space: nowrap; }
+.srcs td code { color: var(--muted); word-break: break-word; }
+
+@media (max-width: 720px) {
+  .controls { grid-template-columns: minmax(0, 1fr); }
+  .wall { padding: 10px; border-radius: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .track, .card, .glass, .name, .hero, .ambient, .toast, .pill { transition: none !important; }
+}
+</style>
+
+<div class="page">
+  <header class="intro">
+    <p class="eyebrow">CleanYourTV · Sony BRAVIA XR-65X90J</p>
+    <h1>Home screen mockup</h1>
+    <p class="lede">The launcher's home screen, redrawn from its own layout code: the same sizes, spacing, colours, Inter font, icons, glow and dock. Click the screen, then use <kbd>←</kbd> <kbd>↑</kbd> <kbd>→</kbd> <kbd>↓</kbd>, <kbd>Enter</kbd> and <kbd>Esc</kbd>, or the remote below.</p>
+  </header>
+
+  <div class="wall">
+    <div class="tv">
+      <div class="screen" id="screen" tabindex="0" role="application" aria-label="TV home screen. Use the arrow keys to move, Enter to select, Escape for Home.">
+        <div class="stage" id="stage">
+          <div class="ambient" id="ambient"></div>
+          <div class="hero" id="hero"></div>
+          <div class="gridvp"><div class="track" id="track"></div></div>
+          <div class="hdr" id="hdr">
+            <div class="leftBlock">
+              <div class="clockrow">
+                <div class="clock" id="clock">7:40</div>
+                <div class="ampm" id="ampm">PM</div>
+                <div class="vdiv"></div>
+                <div class="date" id="date">MONDAY  9 NOVEMBER</div>
+              </div>
+            </div>
+            <div class="pills" id="pills">
+              <div class="pill" data-pill="0"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18,7V4c0,-1.1 -0.9,-2 -2,-2H8C6.9,2 6,2.9 6,4v3H5v6l3,6v3h8v-3l3,-6V7H18zM8,4h8v3h-2V5h-1v2h-2V5h-1v2H8V4z"/></svg><span>Inputs</span></div>
+              <div class="pill" data-pill="1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1,9l2,2c4.97,-4.97 13.03,-4.97 18,0l2,-2C16.93,2.93 7.08,2.93 1,9zM9,17l3,3 3,-3c-1.65,-1.66 -4.34,-1.66 -6,0zM5,13l2,2c2.76,-2.76 7.24,-2.76 10,0l2,-2C15.14,9.14 8.87,9.14 5,13z"/></svg><span id="ssidLabel">Home Wi-Fi</span></div>
+              <div class="pill" data-pill="2"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.14,12.94c0.04,-0.3 0.06,-0.61 0.06,-0.94c0,-0.32 -0.02,-0.64 -0.07,-0.94l2.03,-1.58c0.18,-0.14 0.23,-0.41 0.12,-0.61l-1.92,-3.32c-0.12,-0.22 -0.37,-0.29 -0.59,-0.22l-2.39,0.96c-0.5,-0.38 -1.03,-0.7 -1.62,-0.94L14.4,2.81c-0.04,-0.24 -0.24,-0.41 -0.48,-0.41h-3.84c-0.24,0 -0.43,0.17 -0.47,0.41L9.25,5.35C8.66,5.59 8.12,5.92 7.63,6.29L5.24,5.33c-0.22,-0.08 -0.47,0 -0.59,0.22L2.74,8.87C2.62,9.08 2.66,9.34 2.86,9.48l2.03,1.58C4.84,11.36 4.8,11.69 4.8,12s0.02,0.64 0.07,0.94l-2.03,1.58c-0.18,0.14 -0.23,0.41 -0.12,0.61l1.92,3.32c0.12,0.22 0.37,0.29 0.59,0.22l2.39,-0.96c0.5,0.38 1.03,0.7 1.62,0.94l0.36,2.54c0.05,0.24 0.24,0.41 0.48,0.41h3.84c0.24,0 0.44,-0.17 0.47,-0.41l0.36,-2.54c0.59,-0.24 1.13,-0.56 1.62,-0.94l2.39,0.96c0.22,0.08 0.47,0 0.59,-0.22l1.92,-3.32c0.12,-0.22 0.07,-0.47 -0.12,-0.61L19.14,12.94zM12,15.6c-1.98,0 -3.6,-1.62 -3.6,-3.6s1.62,-3.6 3.6,-3.6s3.6,1.62 3.6,3.6S13.98,15.6 12,15.6z"/></svg><span>Settings</span></div>
+            </div>
+          </div>
+          <div class="glass" id="glass"></div>
+          <div class="toast" id="toast"></div>
+        </div>
+      </div>
+    </div>
+    <p class="hint">Example apps. Your TV shows your own apps with their real artwork.</p>
+  </div>
+
+  <section class="controls">
+    <div class="card-ui remote">
+      <h2>Remote</h2>
+      <div class="dpad">
+        <button type="button" class="up" data-key="up" aria-label="Up"><svg viewBox="0 0 24 24"><path d="M7.4 15.4 12 10.8l4.6 4.6L18 14l-6-6-6 6z"/></svg></button>
+        <button type="button" class="left" data-key="left" aria-label="Left"><svg viewBox="0 0 24 24"><path d="M15.4 16.6 10.8 12l4.6-4.6L14 6l-6 6 6 6z"/></svg></button>
+        <button type="button" class="ok" data-key="ok" aria-label="OK">OK</button>
+        <button type="button" class="right" data-key="right" aria-label="Right"><svg viewBox="0 0 24 24"><path d="M8.6 16.6 13.2 12 8.6 7.4 10 6l6 6-6 6z"/></svg></button>
+        <button type="button" class="down" data-key="down" aria-label="Down"><svg viewBox="0 0 24 24"><path d="M7.4 8.6 12 13.2l4.6-4.6L18 10l-6 6-6-6z"/></svg></button>
+      </div>
+      <div class="rbtns">
+        <button type="button" class="rbtn" data-key="back">Back</button>
+        <button type="button" class="rbtn" data-key="home">Home</button>
+      </div>
+      <p class="keys">Keyboard: arrows, <kbd>Enter</kbd>, <kbd>Esc</kbd></p>
+    </div>
+
+    <form class="card-ui settings" id="settings" autocomplete="off">
+      <h2>Look and layout</h2>
+      <div class="presets" role="group" aria-label="Start from a theme in the repo">
+        <button type="button" class="chip" data-preset="default" aria-pressed="true">Default</button>
+        <button type="button" class="chip" data-preset="aurora" aria-pressed="false">Gradient</button>
+        <button type="button" class="chip" data-preset="six" aria-pressed="false">Six columns</button>
+      </div>
+      <div class="field">
+        <label for="f-cols">Tiles per row <span class="key">columns</span></label>
+        <select id="f-cols">
+          <option value="3">3</option><option value="4" selected>4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="f-rows">Rows under the dock <span class="key">rows_below_dock</span></label>
+        <select id="f-rows">
+          <option value="0" selected>0 (dock at the bottom)</option><option value="1">1</option><option value="2">2</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="f-bg">Background <span class="key">background_color</span></label>
+        <div class="colorrow">
+          <input type="color" id="f-bg" value="#000000" aria-label="Background colour">
+          <label class="check"><input type="checkbox" id="f-wall"> Red, navy and blue gradient</label>
+        </div>
+      </div>
+      <div class="field">
+        <label for="f-band">Band behind the dock <span class="key">code change</span></label>
+        <select id="f-band"><option value="frost" selected>Frosted glass</option><option value="solid">Solid dark (current launcher)</option></select>
+      </div>
+      <div class="field">
+        <label for="f-hdr">Buttons and time <span class="key">code change</span></label>
+        <select id="f-hdr"><option value="bar" selected>One bar on the left, time on the right</option><option value="split">Time on the left, separate buttons on the right (current launcher)</option></select>
+      </div>
+      <div class="field">
+        <label for="f-barstyle">Button bar look <span class="key">code change</span></label>
+        <select id="f-barstyle"><option value="tint" selected>Tinted (dark, see-through)</option><option value="frost">Frosted (light sheen)</option></select>
+      </div>
+      <div class="field">
+        <label for="f-clock">Time and date <span class="key">code change</span></label>
+        <select id="f-clock"><option value="side" selected>Date to the right of the time</option><option value="stacked">Date under the time</option></select>
+      </div>
+      <div class="field">
+        <label for="f-clockw">Time weight <span class="key">code change</span></label>
+        <select id="f-clockw"><option value="300">Light (current launcher)</option><option value="400">Regular</option><option value="500" selected>Medium</option><option value="600">Semibold (needs a bigger font file)</option></select>
+      </div>
+      <div class="field">
+        <label for="f-herow">App name weight <span class="key">code change</span></label>
+        <select id="f-herow"><option value="300">Light (current launcher)</option><option value="400">Regular</option><option value="500" selected>Medium</option></select>
+      </div>
+      <div class="field">
+        <label for="f-title">App name above the dock <span class="key">dock_title</span></label>
+        <select id="f-title"><option value="1" selected>Show</option><option value="0">Hide (glow only)</option></select>
+      </div>
+      <div class="field">
+        <label for="f-time">Time of day</label>
+        <select id="f-time">
+          <option value="now" selected>Now</option>
+          <option value="8:15">Morning, 8:15 AM</option>
+          <option value="13:13">Afternoon, 1:13 PM</option>
+          <option value="19:40">Evening, 7:40 PM</option>
+          <option value="23:30">Night, 11:30 PM</option>
+        </select>
+        <label class="check"><input type="checkbox" id="f-24"> 24-hour clock</label>
+      </div>
+      <div class="field">
+        <label for="f-ssid">Wi-Fi name on the button</label>
+        <input type="text" id="f-ssid" value="Home Wi-Fi" maxlength="32">
+      </div>
+    </form>
+  </section>
+
+  <section class="config">
+    <h2>These choices as theme settings</h2>
+    <p>The settings that the launcher's <code>config.json</code> covers, in the format <code>tools/theme.sh</code> sends to the TV. They don't need a rebuild. With the gradient on, the theme folder also needs the gradient saved as a picture, <code>wallpaper.jpg</code>.</p>
+    <div class="codebox">
+      <pre id="json"></pre>
+      <button type="button" class="rbtn copy" id="copy">Copy</button>
+    </div>
+    <p id="codeNote"></p>
+  </section>
+
+  <section class="notes">
+    <div class="card-ui">
+      <h2>Where each part comes from</h2>
+      <table class="srcs">
+        <tr><td>Layout and spacing</td><td><code>res/layout/activity_main.xml</code></td></tr>
+        <tr><td>Tile size, dock position</td><td><code>AppAdapter.java</code>, <code>MainActivity.java</code></td></tr>
+        <tr><td>Dock band</td><td><code>DockDecoration.java</code></td></tr>
+        <tr><td>Glass highlight</td><td><code>GlassView.java</code></td></tr>
+        <tr><td>Glow behind the dock</td><td><code>MainActivity.setAmbient</code></td></tr>
+        <tr><td>Buttons and icons</td><td><code>res/values/styles.xml</code>, <code>res/drawable/ic_*.xml</code></td></tr>
+        <tr><td>Defaults</td><td><code>res/values/config.xml</code></td></tr>
+      </table>
+    </div>
+    <div class="card-ui">
+      <h2>What differs on the real TV</h2>
+      <ul>
+        <li>App tiles show each app's own artwork, and the glow takes its colour from that artwork.</li>
+        <li>The Wi-Fi name and the date come from the TV.</li>
+        <li>Motion is close but not exact: the TV uses spring physics, this page uses timed curves.</li>
+        <li>Inputs and Settings open real menus on the TV. Here they show a short note.</li>
+      </ul>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  const W = 960, PAD = 56, INNER = 848;
+  let GRID_TOP = 116, GRID_H = 424;
+
+  const APPS = [
+    { name: "Netflix", glow: "#e50914", html: '<div class="b b-netflix"><span>NETFLIX</span></div>' },
+    { name: "YouTube", glow: "#ff0000", html: '<div class="b b-youtube"><i></i>YouTube</div>' },
+    { name: "Prime Video", glow: "#0f79f3", html: '<div class="b b-prime">prime video<small></small></div>' },
+    { name: "Disney+", glow: "#2a5be0", html: '<div class="b b-disney">Disney+</div>' },
+    { name: "Pluto TV", glow: "#f5e400", html: '<div class="b b-pluto">pluto tv</div>' },
+    { name: "Max", glow: "#1f4dff", html: '<div class="b b-max">max</div>' },
+    { name: "Hulu", glow: "#1ce783", html: '<div class="b b-hulu">hulu</div>' },
+    { name: "Spotify", glow: "#1ed760", html: '<div class="b b-spotify"><i></i>Spotify</div>' },
+    { name: "Plex", glow: "#e5a00d", html: '<div class="b b-plex">ple<b>x</b></div>' },
+    { name: "Google Play Store", glow: "#01875f", html: '<div class="b b-play"><i></i>Google Play</div>' },
+    { name: "Twitch", glow: "#9146ff", html: '<div class="b b-twitch">twitch</div>' },
+    { name: "VLC", glow: "#ff8800", html: '<div class="b b-vlc">VLC</div>' }
+  ];
+
+  const PRESETS = {
+    default: { cols: 4, rows: 0, bg: "#000000", wall: false },
+    aurora: { cols: 4, rows: 0, bg: "#0a1433", wall: true },
+    six: { cols: 6, rows: 1, bg: "#000000", wall: false }
+  };
+
+  const $ = id => document.getElementById(id);
+  const stage = $("stage"), screen = $("screen"), track = $("track"), glass = $("glass"), hero = $("hero"), ambient = $("ambient"), toast = $("toast");
+  const pills = Array.from(document.querySelectorAll(".pill"));
+  const d = v => "calc(var(--dp) * " + v + ")";
+
+  const state = { cols: 4, rows: 0, bg: "#0a1433", wall: true, title: true, band: "frost", clock: "side", clockW: 500, hdr: "bar", heroW: 500, barStyle: "tint", time: "now", h24: false, name: "", ssid: "Home Wi-Fi",
+                  zone: "grid", idx: 0, pill: 0, scroll: 0, lastDock: 0 };
+  let G = null, cards = [], names = [], glowColor = null, glowTimer = 0, toastTimer = 0, heroTimer = 0;
+
+  // AppAdapter.tileWidthPx / tileHeightPx / itemHeightPx and MainActivity's dock placement, in dp.
+  function geometry(cols, rows) {
+    const cell = INNER / cols;
+    let tw = Math.max(80, Math.min(180, Math.floor((cell - 12) / 1.1)));
+    if (rows > 0) {
+      const reserved = 18 + 30 + (state.title ? 104 : 0);
+      const th = (GRID_H - reserved) / (rows + 1) - 45;
+      const byH = Math.round(th * 180 / 101);
+      tw = Math.max(80, Math.round(tw * 0.85), Math.min(tw, byH));
+    }
+    const th = Math.round(tw * 101 / 180), itemH = th + 45;
+    let want = GRID_H - (itemH + 18) - itemH * rows - 30;
+    if (rows > 0 && state.title) want = Math.max(want, 104);
+    return { cols, cell, tw, th, itemH, want, k: tw / 180, radius: 16 * Math.min(1, tw / 180) };
+  }
+  const itemTop = r => r === 0 ? G.want + 6 : G.want + 18 + G.itemH + (r - 1) * G.itemH;
+  const cardTop = r => itemTop(r) + 8;
+  const cardLeft = c => PAD + c * G.cell + (G.cell - G.tw) / 2;
+
+  function build() {
+    // A taller header leaves the grid less height; the dock is placed from the bottom, so it stays put.
+    const stacked = state.clock === "stacked";
+    $("hdr").classList.toggle("stacked", stacked);
+    const bar = state.hdr === "bar";
+    $("hdr").classList.toggle("v2", bar);
+    GRID_TOP = Math.round(26 + (bar ? 42 : 63) + (stacked ? 22 : 0) + 11);
+    GRID_H = 540 - GRID_TOP;
+    document.querySelector(".gridvp").style.top = d(GRID_TOP);
+    G = geometry(state.cols, state.rows);
+    track.innerHTML = "";
+    cards = []; names = [];
+    const band = document.createElement("div");
+    band.className = state.band === "frost" ? "band frost" : "band";
+    const dockCount = Math.min(G.cols, APPS.length);
+    const bl = cardLeft(0) - 14, br = cardLeft(dockCount - 1) + G.tw + 14;
+    Object.assign(band.style, { left: d(bl), top: d(cardTop(0) - 14), width: d(br - bl), height: d(G.th + 28), borderRadius: d(26) });
+    track.appendChild(band);
+    APPS.forEach((app, i) => {
+      const r = Math.floor(i / G.cols), c = i % G.cols;
+      const el = document.createElement("div");
+      el.className = "card";
+      el.innerHTML = app.html;
+      el.style.setProperty("--k", G.k.toFixed(4));
+      Object.assign(el.style, { left: d(cardLeft(c)), top: d(cardTop(r)), width: d(G.tw), height: d(G.th), borderRadius: d(G.radius) });
+      el.addEventListener("click", e => { e.stopPropagation(); state.zone = "grid"; state.idx = i; render(); screen.focus({ preventScroll: true }); });
+      track.appendChild(el);
+      cards.push(el);
+      const n = document.createElement("div");
+      n.className = "name";
+      n.textContent = app.name;
+      Object.assign(n.style, { left: d(cardLeft(c) - 20), width: d(G.tw + 40), top: d(cardTop(r) + G.th + 9) });
+      track.appendChild(n);
+      names.push(n);
+    });
+    glass.style.borderRadius = d(20 * Math.min(1, G.tw / 180));
+    if (state.idx >= APPS.length) state.idx = 0;
+    state.scroll = 0;
+    render(true);
+  }
+
+  function scrollFor(r) {
+    if (r === 0) return 0;
+    const top = itemTop(r), bottom = top + G.itemH;
+    let s = state.scroll;
+    if (bottom > s + GRID_H - 40) s = bottom - (GRID_H - 40);
+    if (top < s + G.want) s = top - G.want;
+    return Math.max(0, s);
+  }
+
+  function setGlow(color) {
+    clearTimeout(glowTimer);
+    if (!color) { ambient.style.opacity = "0"; glowColor = null; return; }
+    const paint = c => {
+      const rgb = c.match(/\w\w/g).map(h => parseInt(h, 16)).join(",");
+      ambient.style.background = "radial-gradient(circle " + d(0.62 * W) + " at 32% 42%, rgba(" + rgb + ",.36) 0%, rgba(" + rgb + ",.15) 45%, rgba(" + rgb + ",0) 100%)";
+    };
+    if (glowColor === null) { paint(color); ambient.style.opacity = "1"; }
+    else if (color !== glowColor) {
+      ambient.style.opacity = ".35";
+      glowTimer = setTimeout(() => { paint(color); ambient.style.opacity = "1"; }, 200);
+    }
+    glowColor = color;
+  }
+
+  function setHero(text) {
+    clearTimeout(heroTimer);
+    if (!text || !state.title) { hero.style.opacity = "0"; hero.dataset.text = ""; return; }
+    hero.style.top = d(GRID_TOP + cardTop(0) - 40);
+    if (hero.dataset.text === text) { hero.style.opacity = "1"; return; }
+    if (hero.dataset.text) {
+      hero.style.opacity = "0";
+      heroTimer = setTimeout(() => { hero.textContent = text; hero.style.opacity = "1"; }, 160);
+    } else { hero.textContent = text; hero.style.opacity = "1"; }
+    hero.dataset.text = text;
+  }
+
+  function render() {
+    pills.forEach((p, i) => p.classList.toggle("focus", state.zone === "top" && state.pill === i));
+    cards.forEach((c, i) => c.classList.toggle("focus", state.zone === "grid" && state.idx === i));
+    names.forEach((n, i) => n.classList.toggle("show", state.zone === "grid" && state.idx === i && i >= G.cols));
+    if (state.zone === "grid") {
+      const r = Math.floor(state.idx / G.cols), c = state.idx % G.cols;
+      state.scroll = scrollFor(r);
+      const w = G.tw * 1.1, h = G.th * 1.1;
+      const x = cardLeft(c) - G.tw * 0.05, y = GRID_TOP + cardTop(r) - state.scroll - G.th * 0.05;
+      glass.style.width = d(w); glass.style.height = d(h);
+      glass.style.transform = "translate(" + d(x) + ", " + d(y) + ")";
+      glass.style.opacity = "1";
+      if (r === 0) { state.lastDock = state.idx; setHero(APPS[state.idx].name); setGlow(APPS[state.idx].glow); }
+      else { setHero(""); setGlow(null); }
+    } else {
+      glass.style.opacity = "0";
+    }
+    track.style.transform = "translateY(" + d(-state.scroll) + ")";
+  }
+
+  function nearestPill() {
+    const card = cards[state.idx].getBoundingClientRect();
+    const cx = card.left + card.width / 2;
+    let best = 0, bestD = Infinity;
+    pills.forEach((p, i) => { const b = p.getBoundingClientRect(); const dist = Math.abs(b.left + b.width / 2 - cx); if (dist < bestD) { bestD = dist; best = i; } });
+    return best;
+  }
+
+  function showToast(text) {
+    clearTimeout(toastTimer);
+    toast.textContent = text;
+    toast.classList.add("show");
+    toastTimer = setTimeout(() => toast.classList.remove("show"), 1800);
+  }
+
+  function press(key) {
+    const n = APPS.length, cols = G.cols;
+    if (state.zone === "top") {
+      if (key === "left" && state.pill > 0) state.pill--;
+      else if (key === "right" && state.pill < pills.length - 1) state.pill++;
+      else if (key === "down") { state.zone = "grid"; state.idx = state.lastDock; }
+      else if (key === "ok") showToast(["Opens the Inputs menu: HDMI 1 to 4 and Live TV", "Opens Wi-Fi settings", "Opens the TV's Settings"][state.pill]);
+    } else {
+      const i = state.idx;
+      if (key === "left" && i % cols !== 0) state.idx--;
+      else if (key === "right" && i % cols !== cols - 1 && i < n - 1) state.idx++;
+      else if (key === "down") {
+        if (i + cols < n) state.idx = i + cols;
+        else if (Math.floor(i / cols) < Math.floor((n - 1) / cols)) state.idx = n - 1;
+      } else if (key === "up") {
+        if (i < cols) { state.pill = nearestPill(); state.zone = "top"; }
+        else state.idx = i - cols;
+      } else if (key === "ok") showToast("Opening " + APPS[i].name + "…");
+    }
+    if (key === "back" || key === "home") { state.zone = "grid"; state.idx = 0; }
+    render();
+  }
+
+  // Clock, greeting and date (MainActivity.updateGreeting, strings.xml date_format "EEEE  d MMMM")
+  function now() {
+    const t = new Date();
+    if (state.time !== "now") { const [h, m] = state.time.split(":").map(Number); t.setHours(h, m, 0, 0); }
+    return t;
+  }
+  function tick() {
+    const t = now(), h = t.getHours(), m = String(t.getMinutes()).padStart(2, "0");
+    if (state.h24) { $("clock").textContent = String(h).padStart(2, "0") + ":" + m; $("ampm").textContent = ""; $("ampm").style.display = "none"; }
+    else { $("clock").textContent = ((h % 12) || 12) + ":" + m; $("ampm").textContent = h < 12 ? "AM" : "PM"; $("ampm").style.display = ""; }
+    // date_format "EEE  d MMM": three-letter day and month
+    const wd = t.toLocaleDateString("en-GB", { weekday: "long" }).slice(0, 3), mo = t.toLocaleDateString("en-GB", { month: "long" }).slice(0, 3);
+    $("date").textContent = wd + "  " + t.getDate() + " " + mo;
+  }
+
+  function applyLook() {
+    stage.style.setProperty("--tvbg", state.bg);
+    stage.style.setProperty("--clockw", String(state.clockW));
+    stage.style.setProperty("--herow", String(state.heroW));
+    $("hdr").classList.toggle("tint", state.barStyle === "tint");
+    // Apple system red and blue (dark-mode values) with a deep navy between them
+    // Soft blobs on the diagonal: red pooled top left, blue bottom right, navy (the background colour) between
+    stage.style.backgroundImage = state.wall ? [
+      "radial-gradient(ellipse 62% 78% at 6% 4%, rgba(255,69,58,.92) 0%, rgba(255,69,58,.5) 32%, rgba(255,69,58,0) 72%)",
+      "radial-gradient(ellipse 38% 48% at 30% -6%, rgba(255,69,58,.55) 0%, rgba(255,69,58,0) 70%)",
+      "radial-gradient(ellipse 66% 82% at 96% 100%, rgba(10,132,255,.92) 0%, rgba(10,132,255,.5) 32%, rgba(10,132,255,0) 72%)",
+      "radial-gradient(ellipse 40% 50% at 70% 108%, rgba(10,132,255,.55) 0%, rgba(10,132,255,0) 70%)"
+    ].join(", ") : "none";
+    $("ssidLabel").textContent = state.ssid || "Wi-Fi";
+    const cfg = { columns: state.cols, rows_below_dock: state.rows, dock_title: state.title, background_color: state.bg.toUpperCase(), wallpaper: state.wall };
+    $("json").textContent = JSON.stringify(cfg, null, 2);
+    const changes = [];
+    if (state.band === "frost") changes.push("the frosted band (<code>DockDecoration.java</code>)");
+    changes.push("no greeting and a three-letter day and month (<code>res/layout/activity_main.xml</code>, <code>MainActivity.java</code>, <code>res/values/strings.xml</code>)");
+    if (state.hdr === "bar") changes.push("the button bar on the left, with the time and date as one small line on the right (<code>res/layout/activity_main.xml</code> and a new bar background)");
+    if (state.heroW !== 300) changes.push("the bolder app name above the dock (<code>res/layout/activity_main.xml</code>)");
+    if (state.clock === "stacked") changes.push("the stacked time and date (<code>res/layout/activity_main.xml</code>)");
+    if (state.clockW !== 300) changes.push(state.clockW > 500 ? "the Semibold time, which also needs a larger font file in <code>res/font/inter.ttf</code>" : "the bolder time (<code>res/layout/activity_main.xml</code>)");
+    $("codeNote").hidden = !changes.length;
+    $("codeNote").innerHTML = "Not covered by these settings: " + changes.join(" and ") + ". " + (changes.length > 1 ? "They need" : "It needs") + " a change to the launcher's code, then a rebuild.";
+    const match = Object.keys(PRESETS).find(k => { const p = PRESETS[k]; return p.cols === state.cols && p.rows === state.rows && p.bg === state.bg && p.wall === state.wall; });
+    document.querySelectorAll(".chip").forEach(ch => ch.setAttribute("aria-pressed", String(ch.dataset.preset === match)));
+  }
+
+  function syncForm() {
+    $("f-cols").value = String(state.cols); $("f-rows").value = String(state.rows);
+    $("f-bg").value = state.bg; $("f-wall").checked = state.wall;
+  }
+
+  // Events
+  document.querySelectorAll("[data-key]").forEach(b => b.addEventListener("click", () => { press(b.dataset.key); }));
+  screen.addEventListener("click", () => screen.focus({ preventScroll: true }));
+  pills.forEach((p, i) => {
+    p.addEventListener("mouseenter", () => { state.zone = "top"; state.pill = i; render(); });
+    p.addEventListener("click", e => { e.stopPropagation(); state.zone = "top"; state.pill = i; render(); press("ok"); screen.focus({ preventScroll: true }); });
+  });
+  const KEYS = { ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right", Enter: "ok", " ": "ok", Escape: "home", Backspace: "back" };
+  document.addEventListener("keydown", e => {
+    const tag = (e.target.tagName || "").toLowerCase();
+    if (tag === "input" || tag === "select" || tag === "textarea") return;
+    if (tag === "button" && (e.key === "Enter" || e.key === " ")) return;
+    const k = KEYS[e.key];
+    if (!k) return;
+    e.preventDefault();
+    press(k);
+  });
+  document.querySelectorAll(".chip").forEach(ch => ch.addEventListener("click", () => {
+    Object.assign(state, PRESETS[ch.dataset.preset]);
+    syncForm(); applyLook(); build();
+  }));
+  $("f-cols").addEventListener("change", e => { state.cols = +e.target.value; applyLook(); build(); });
+  $("f-rows").addEventListener("change", e => { state.rows = +e.target.value; applyLook(); build(); });
+  $("f-title").addEventListener("change", e => { state.title = e.target.value === "1"; applyLook(); build(); });
+  $("f-band").addEventListener("change", e => { state.band = e.target.value; applyLook(); build(); });
+  $("f-clock").addEventListener("change", e => { state.clock = e.target.value; applyLook(); build(); });
+  $("f-hdr").addEventListener("change", e => { state.hdr = e.target.value; applyLook(); build(); });
+  $("f-herow").addEventListener("change", e => { state.heroW = +e.target.value; applyLook(); });
+  $("f-barstyle").addEventListener("change", e => { state.barStyle = e.target.value; applyLook(); });
+  $("f-clockw").addEventListener("change", e => { state.clockW = +e.target.value; applyLook(); });
+  $("f-bg").addEventListener("input", e => { state.bg = e.target.value; applyLook(); });
+  $("f-wall").addEventListener("change", e => { state.wall = e.target.checked; applyLook(); });
+  $("f-time").addEventListener("change", e => { state.time = e.target.value; tick(); });
+  $("f-24").addEventListener("change", e => { state.h24 = e.target.checked; tick(); });
+  $("f-ssid").addEventListener("input", e => { state.ssid = e.target.value.trim(); applyLook(); });
+  $("settings").addEventListener("submit", e => e.preventDefault());
+  $("copy").addEventListener("click", () => {
+    const text = $("json").textContent, btn = $("copy");
+    const done = msg => { btn.textContent = msg; setTimeout(() => (btn.textContent = "Copy"), 1500); };
+    try {
+      navigator.clipboard.writeText(text).then(() => done("Copied"), () => { selectJson(); done("Press Ctrl+C"); });
+    } catch (err) { selectJson(); done("Press Ctrl+C"); }
+  });
+  function selectJson() { const r = document.createRange(); r.selectNodeContents($("json")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+
+  syncForm();
+  applyLook();
+  build();
+  tick();
+  setInterval(tick, 15000);
+})();
+</script>
