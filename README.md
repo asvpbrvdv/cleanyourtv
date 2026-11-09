@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <a href="docs/PRESS.md"><img src="docs/card.jpg" alt="123 TV models · 42 brands · 19 languages · 390 KB launcher. Featured in TechCrunch, Mashable, Android Authority, XDA, FlatpanelsHD, It's FOSS, Phandroid, GIGAZINE, Xataka, WinFuture, Frandroid, Macitynet, Techaeris, TechPP, The Daily Star, detikINET and 54 more: 70 articles from 21 countries. Before: stock Google TV home with a sponsored ad. After: the Clean Your TV launcher." width="800"></a>
+  <a href="docs/PRESS.md"><img src="docs/card.jpg" alt="124 TV models · 42 brands · 390 KB launcher. Featured in TechCrunch, Mashable, Android Authority, XDA, FlatpanelsHD, It's FOSS, Phandroid, GIGAZINE, Xataka, WinFuture, Frandroid, Macitynet, Techaeris, TechPP, The Daily Star, detikINET and 54 more: 70 articles from 21 countries. Before: stock Google TV home with a sponsored ad. After: the Clean Your TV launcher." width="800"></a>
 </p>
 
 > Vibe coded my parents' TV this afternoon! It was showing a sponsored ad before you could even get
@@ -84,7 +84,7 @@ install any launcher at all; their lists say so in the header.
 
 Tested lists from contributors, one folder per model in [`examples/`](examples/):
 
-**TCL** 26 · **Sony** 18 · **Xiaomi** 16 · **Philips** 8 · **Hisense** 6 · **Amazon Fire TV** 3 ·
+**TCL** 26 · **Sony** 19 · **Xiaomi** 16 · **Philips** 8 · **Hisense** 6 · **Amazon Fire TV** 3 ·
 **Panasonic** 3 · **BenQ** 2 · **CHiQ** 2 · **Haier** 2 · **Hitachi** 2 · **NVIDIA Shield** 2 · **Skyworth** 2 ·
 **Vu** 2 · AiPro2K · AIWA · Cecotec · Chromecast with Google TV · Compac · EKO · FFalcon · Freebox ·
 Insignia Fire TV · Kalley · MTC · OnePlus · onn · Polytron · PRISM+ · RCA · Redmi · SANYO · Tele System ·
@@ -168,6 +168,7 @@ BYINTEK, JMGO, Portronics, Stellamore, Wanbo and XGIMI projectors
 | Sony BRAVIA VU31 4K (BRAVIA_VU31_4K, Realtek), India | Google TV 14 |
 | Sony BRAVIA XBR-65X900E (2017, BRAVIA_ATV2) | Android TV 9 |
 | Sony BRAVIA XBR-65X900F (2018, BRAVIA_ATV3_4K, MediaTek MT5891), US/Canada | Android TV 9 |
+| Sony BRAVIA XR-65X90J (2021, BRAVIA_VH2, MediaTek), US | Google TV 12 |
 | Stellamore T950S projector (Droidlogic be30a3, Amlogic txhd2) | Android 13 |
 | TCL 32S5400A (C06, C06_2K_GB, MediaTek MT9221, 1 GB), 2023 | Android TV 11 |
 | TCL 32S5K (C06, C06_2K_GB, MediaTek MT9221, 918 MB), EU | Android TV 11 |
@@ -286,9 +287,6 @@ the install script finds `~/Android/Sdk` and the `java` on your PATH.
 - **On-TV launcher settings:** click Settings for the TV's system settings, or hold OK on Settings and choose Launcher settings to set 4, 5, 6 or 7 apps per row, turn animations on or off, and opt into advanced effects. The advanced option adds tile lift, icon zoom and smooth ambient-colour transitions; it may use more memory. Use Follow theme to clear on-TV choices. Pushing or resetting a theme also clears them.
 - **Change the default home:** Launcher settings and the optional Default-home tile (`show_home_settings_shortcut`) open Android's home picker. Choose the original launcher to stop using CleanYourTV as Home, or CleanYourTV to return. The original launcher must be enabled. If the install script disabled it, use the restore script below first. Some TVs provide no home picker.
 - **Themes** set the same keys plus a background colour and a wallpaper from a `config.json` pushed to the TV, no rebuild. Four ship in [`themes/`](themes/), documented there.
-- **Language** follows the TV: English, German, Spanish, Catalan, French, Russian, Serbian (Latin), Polish, Czech, Portuguese, Turkish, Arabic, Hebrew, Simplified Chinese, Traditional Chinese (Taiwan), Thai, Finnish, Vietnamese, Bangla. Android 13+ can set it for the launcher alone: `tools/tv.py 'cmd locale set-app-locales com.gathin.tvhome --locales ca'`.
-  Hebrew places the menu buttons on the left and the date and clock on the right, with the greeting above the clock. The Clock screensaver right-aligns its date and time, and Hebrew dates include the month prefix ב (for example, 19 באוקטובר). Hebrew dock and app-grid rows start on the right, with matching left/right remote navigation. The Hebrew input selector places icons and labels on the right, status on the left, and aligns the dropdown with the Inputs button’s right edge. Other languages keep their original layouts.
-  Russian includes the module-card approval and management screens and the VPN-off badge.
 - **Module cards** let any TV app declare its own tile (label, caption, glow). The launcher asks you once per app, Keep hidden by default, and remembers the answer for that app's signing key and card name. Hold OK on Settings and choose Module cards to change your mind. How to make one: [`docs/modules.md`](docs/modules.md); the contract: [`docs/specs/card.md`](docs/specs/card.md).
 - **Clock screensaver**: a drifting clock over the glow, so nothing burns in. Pick "Clock" in the TV's screensaver settings, or over ADB:
   `tools/tv.py 'settings put secure screensaver_components com.gathin.tvhome/.ClockDream; settings put secure screensaver_enabled 1'`
