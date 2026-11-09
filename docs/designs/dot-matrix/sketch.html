@@ -45,7 +45,9 @@ kbd { font-family: var(--mono); font-size: 12px; padding: 1px 6px; border: 1px s
 .seg { display: flex; align-items: center; gap: calc(var(--dp) * 8); padding: 0 calc(var(--dp) * 15) 0 calc(var(--dp) * 12); border-radius: calc(var(--dp) * 17); font-size: calc(var(--dp) * 12); letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.82); white-space: nowrap; }
 .seg svg { width: calc(var(--dp) * 17); height: calc(var(--dp) * 17); fill: currentColor; flex: none; }
 .seg.focus { background: #f2f2f2; color: #000; }
-.seg.focus::after { content: ""; width: calc(var(--dp) * 5); height: calc(var(--dp) * 5); border-radius: 50%; background: var(--red); margin-left: calc(var(--dp) * 2); }
+/* Every segment keeps room for the red dot, so selecting one never changes its width. */
+.seg::after { content: ""; flex: none; width: calc(var(--dp) * 5); height: calc(var(--dp) * 5); border-radius: 50%; background: transparent; margin-left: calc(var(--dp) * 2); }
+.seg.focus::after { background: var(--red); }
 .when { display: flex; align-items: baseline; gap: calc(var(--dp) * 14); }
 .time { font-family: var(--dot); font-weight: 900; font-size: calc(var(--dp) * 12); letter-spacing: .1em; line-height: 1; font-variant-numeric: tabular-nums; }
 .ampm { font-size: calc(var(--dp) * 11); letter-spacing: .14em; color: rgba(255,255,255,.6); margin-left: calc(var(--dp) * -8); }
