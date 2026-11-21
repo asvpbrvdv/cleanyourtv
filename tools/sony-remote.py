@@ -9,7 +9,13 @@ On the TV, once: Settings > Network & Internet > Home network > IP control. Set 
     ... python3 tools/sony-remote.py --port 9000 --no-browser
     ... python3 tools/sony-remote.py --make-app                             Mac: ~/Applications/TV Remote.app
 
-Keys: arrows, Enter = OK, Esc or Backspace = Back, H = Home, S = Settings, + / - = volume, M = mute.
+The page is laid out for one hand on a phone: a touchpad (each short swipe is one arrow press, a tap is
+OK, with a Buttons switch back to the arrow ring), a volume strip you drag to set the TV's level, then
+the apps and inputs and Back, Home, Play/Pause and Type at the bottom. When the TV is in standby the
+page shows only power and the apps and inputs, and choosing one turns the TV on first.
+
+Keys: arrows, Enter = OK, Esc or Backspace = Back, H = Home, S = Settings, + / - = volume, M = mute,
+P = play/pause.
 The keyboard button turns those letters into typing: what you type goes into the search or text field
 open on the TV (appControl setTextForm), arrows still move, Enter is OK and Esc is Back.
 Python 3 standard library only. The button codes come from the TV itself (getRemoteControllerInfo),
@@ -60,6 +66,8 @@ FALLBACK_CODES = {
     "VolumeUp": "AAAAAQAAAAEAAAASAw==",
     "VolumeDown": "AAAAAQAAAAEAAAATAw==",
     "Mute": "AAAAAQAAAAEAAAAUAw==",
+    "Play": "AAAAAgAAAJcAAAAaAw==",
+    "Pause": "AAAAAgAAAJcAAAAZAw==",
 }
 
 # Page button -> IRCC names to try, in order. The gear button on Google TV BRAVIA remotes sends
@@ -69,6 +77,7 @@ BUTTONS = {
     "ok": ["Confirm"], "back": ["Return"], "home": ["Home"],
     "settings": ["ActionMenu", "Options"],
     "volup": ["VolumeUp"], "voldown": ["VolumeDown"], "mute": ["Mute"], "power": ["TvPower", "Power"],
+    "play": ["Play"], "pause": ["Pause"],
 }
 
 IRCC_BODY = ('<?xml version="1.0"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" '
@@ -151,11 +160,42 @@ class Tv:
         except RuntimeError:
             self.press("power")
 
+    def power_state(self):
+        """"active" or "standby", or None when the TV can't say."""
+        try:
+            status = self.call("system", "getPowerStatus")[0].get("status")
+        except (OSError, ValueError, RuntimeError, KeyError, TypeError, IndexError, AttributeError):
+            return None
+        return status if status in ("active", "standby") else None
+
+    def power_on(self):
+        """On, and nothing else: unlike power(), never a toggle, so a late tap can't turn it off."""
+        self.call("system", "setPowerStatus", [{"status": True}])
+
+    def sound(self):
+        """Mute and volume from the TV's volume information: the speaker's when listed, else the first
+        output's. Each is None when the TV doesn't report it."""
+        result = self.call("audio", "getVolumeInformation")
+        outputs = [v for v in (result[0] if result else []) if isinstance(v, dict)]
+        states = [v["mute"] for v in outputs if isinstance(v.get("mute"), bool)]
+        levels = [v for v in outputs if isinstance(v.get("volume"), int) and not isinstance(v["volume"], bool)]
+        main = next((v for v in levels if v.get("target") == "speaker"), levels[0] if levels else {})
+        top = main.get("maxVolume")
+        return {"muted": any(states) if states else None, "volume": main.get("volume"),
+                "maxVolume": top if isinstance(top, int) and top > 0 else None, "target": main.get("target")}
+
     def muted(self):
         """True or False from the TV's volume information, None when it reports no mute state."""
-        result = self.call("audio", "getVolumeInformation")
-        states = [v["mute"] for v in (result[0] if result else []) if isinstance(v.get("mute"), bool)]
-        return any(states) if states else None
+        return self.sound()["muted"]
+
+    def set_volume(self, level):
+        """Set the volume to level, kept within what the TV says it allows (0 to 100 if it doesn't)."""
+        now = self.sound()
+        if now["volume"] is None:
+            raise RuntimeError("The TV doesn't report its volume, so it can't be set to a level.")
+        level = max(0, min(int(level), now["maxVolume"] or 100))
+        self.call("audio", "setAudioVolume", [{"target": now["target"] or "", "volume": str(level)}])
+        return level
 
     def text(self):
         """(open, text) for the TV's on-screen keyboard field; open is None when the TV can't say."""
@@ -216,49 +256,95 @@ PAGE = """<!doctype html>
 <style>
 :root{color-scheme:dark;--bg:#0b0c0f;--pad:#1a1c22;--key:#262931;--key-hi:#353945;--text:#eef0f4;--dim:#8a8f9c;
  --accent:#cfffcf;--red:#e5484d;--red-hi:#f2555a;--green:#46c46e;--err:#ff8a8a;--line:#262931;
- --letter:#353945;--mod:#262931;--ok:#353945;--ok-hi:#454a58;--shadow:none}
+ --letter:#353945;--mod:#262931;--ok:#353945;--ok-hi:#454a58;--shadow:none;--pad-a:#1d2027;--pad-b:#15171c}
 :root[data-theme="light"]{color-scheme:light;--bg:#f2f3f6;--pad:#e2e5ea;--key:#ffffff;--key-hi:#eceef2;
  --text:#15181e;--dim:#6b7180;--red:#e0393f;--red-hi:#ec474d;--green:#239a4c;--err:#c8282e;--line:#d3d7de;
- --letter:#ffffff;--mod:#c5cad3;--ok:#ffffff;--ok-hi:#eceef2;--shadow:0 1px 2px rgba(21,24,30,.12)}
+ --letter:#ffffff;--mod:#c5cad3;--ok:#ffffff;--ok-hi:#eceef2;--shadow:0 1px 2px rgba(21,24,30,.12);
+ --pad-a:#e8ebef;--pad-b:#dde1e7}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 /* Quick taps are button presses, not iOS double-tap zoom; pinch zoom still works. */
 html,button{touch-action:manipulation}
 body{margin:0;min-height:100vh;display:flex;justify-content:center;align-items:flex-start;
  background:var(--bg);color:var(--text);font:15px/1.3 -apple-system,BlinkMacSystemFont,"Inter",sans-serif}
 /* The remote sits in the centre column whether or not the keyboard is open, so the keyboard button
-   never moves: the keyboard fills the empty column to its left, or goes below it on narrow screens. */
-.app{display:grid;grid-template-columns:1fr minmax(0,268px) 1fr;align-items:start;padding:20px 16px;width:100%}
-main{grid-column:2;grid-row:1;width:100%}
-.row{display:flex;gap:10px;justify-content:center;margin:10px 0}
+   never moves: the keyboard fills the empty column to its left, or goes below it on narrow screens.
+   Top to bottom by how often the thumb needs it: the touchpad in the middle, the apps and the everyday
+   buttons at the bottom, where one hand reaches. */
+.app{display:grid;grid-template-columns:1fr minmax(0,340px) 1fr;align-items:start;padding:16px;width:100%}
+main{grid-column:2;grid-row:1;width:100%;display:flex;flex-direction:column;gap:12px}
 button{appearance:none;border:0;border-radius:14px;background:var(--key);color:var(--text);
- font:inherit;padding:12px 0;flex:1;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent}
+ font:inherit;padding:12px 0;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent}
 button{box-shadow:var(--shadow)}
 button:hover{background:var(--key-hi)}
 button:active{transform:scale(.96)}
-.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;background:var(--pad);
- border-radius:50%;padding:18px;aspect-ratio:1;margin:16px 0}
+button:focus-visible,#touch:focus-visible,#vol:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle;flex:none}
+.top{display:flex;align-items:center;gap:8px}
+#tvstate{flex:1;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--dim)}
+#tvstate .dot{width:8px;height:8px;border-radius:50%;background:var(--dim)}
+#tvstate.on .dot{background:var(--green)}
+button.round{flex:0 0 40px;width:40px;height:40px;padding:0;border-radius:50%;display:grid;place-items:center}
+button.power{background:var(--red);color:#fff}
+button.power:hover{background:var(--red-hi)}
+#theme{color:var(--dim)}
+#theme:hover{color:var(--text)}
+#theme svg{width:18px;height:18px}
+/* Touchpad: each short swipe is one step on the TV, a tap is OK. */
+#touch{position:relative;height:clamp(200px,40vh,320px);border-radius:24px;overflow:hidden;touch-action:none;
+ cursor:crosshair;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;
+ background:radial-gradient(circle at 50% 45%,var(--pad-a),var(--pad-b));border:1px solid var(--line)}
+#touch canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+#touch .hint{position:absolute;inset:auto 0 14px;text-align:center;font-size:12px;color:var(--dim);pointer-events:none;padding:0 16px}
+#flash{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);font-size:15px;font-weight:600;
+ display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none;opacity:0;transition:opacity .35s}
+#flash.show{opacity:1;transition:none}
+#flash svg{width:34px;height:34px;stroke-width:2.4}
+.swap{position:absolute;top:8px;right:8px;z-index:1;padding:6px 10px;font-size:12px;color:var(--dim);
+ background:transparent;box-shadow:inset 0 0 0 1px var(--line);border-radius:999px}
+.swap:hover{color:var(--text);background:transparent}
+/* The arrow ring, for anyone who'd rather press buttons. */
+#ring{position:relative;height:clamp(200px,40vh,320px);border-radius:24px;background:var(--pad);display:grid;place-items:center}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:min(230px,80%);aspect-ratio:1}
 .pad button{border-radius:50%;font-size:20px;padding:0}
 .pad .ok{background:var(--ok);font-size:15px;font-weight:600}
 .pad .ok:hover{background:var(--ok-hi)}
-h2{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin:18px 0 6px}
-#apps,#inputs{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-#apps .note{grid-column:1/-1;color:var(--dim);font-size:13px}
-/* App buttons in their brand's two colours, the same in both themes. */
-#apps button.brand{background:var(--brand-bg);color:var(--brand-fg);font-weight:600}
-#apps button.brand:hover{background:var(--brand-bg);filter:brightness(.9)}
-#inputs button.off{color:var(--dim)}
-#status{min-height:1.3em;font-size:13px;color:var(--dim);text-align:center;margin-top:14px}
-#status.err{color:var(--err)}
-svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle}
-button.round{flex:0 0 44px;height:44px;padding:0;border-radius:50%}
-button.power{background:var(--red);color:#fff}
-button.power:hover{background:var(--red-hi)}
-button.kbd.on{background:var(--text);color:var(--bg)}
+/* Volume: drag along the strip; it never jumps to where you touch. */
+#vol{display:flex;align-items:center;gap:10px;background:var(--pad);border-radius:16px;padding:6px 14px 6px 6px;
+ touch-action:none;cursor:ew-resize;user-select:none;-webkit-user-select:none}
+#vol button.mute{width:40px;height:40px;padding:0;border-radius:12px;display:grid;place-items:center;flex:none}
 button.mute.on{background:var(--red);color:#fff}
 button.mute.on:hover{background:var(--red-hi)}
+.track{flex:1;position:relative;height:6px;border-radius:3px;background:var(--line)}
+#fill{position:absolute;inset:0 auto 0 0;width:0;border-radius:3px;background:var(--text)}
+#vol.muted #fill{background:var(--dim)}
+#vol .num{min-width:2.2em;text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+#vol .step{font-size:12px;color:var(--dim)}
+h2{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin:2px 2px -4px}
+#watch{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+#watch .note{grid-column:1/-1;color:var(--dim);font-size:13px}
+#watch button{padding:11px 4px;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* App buttons in their brand's two colours, the same in both themes. */
+#watch button.brand{background:var(--brand-bg);color:var(--brand-fg)}
+#watch button.brand:hover{background:var(--brand-bg);filter:brightness(.9)}
+#watch button.input{font-weight:500}
+#watch button.off{color:var(--dim)}
+.thumb{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.thumb button{display:flex;flex-direction:column;align-items:center;gap:4px;padding:11px 0 9px;font-size:12px;color:var(--dim)}
+.thumb button svg{color:var(--text)}
+button.play{background:var(--text);color:var(--bg)}
+button.play svg{color:var(--bg)}
+button.play:hover{background:var(--text);opacity:.9}
+button.kbd.on{box-shadow:inset 0 0 0 2px var(--text)}
+#offview{display:flex;flex-direction:column;align-items:center;gap:14px;padding:32px 16px;border-radius:24px;background:var(--pad);text-align:center}
+#offview p{margin:0;color:var(--dim);font-size:13px;max-width:28ch}
+#wake{width:96px;height:96px;border-radius:50%;padding:0;display:grid;place-items:center;background:var(--red);color:#fff}
+#wake:hover{background:var(--red-hi)}
+#wake svg{width:40px;height:40px}
+#status{min-height:1.3em;font-size:13px;color:var(--dim);text-align:center}
+#status.err{color:var(--err)}
 /* phone-style keyboard */
-#keyboard{grid-column:1;grid-row:1;justify-self:end;width:100%;max-width:348px;padding-right:28px;margin-top:10px}
-#keyboard[hidden]{display:none}
+#keyboard{grid-column:1;grid-row:1;justify-self:end;width:100%;max-width:348px;padding-right:28px;margin-top:52px}
 .field{display:flex;align-items:center;gap:8px;background:var(--pad);border-radius:12px;padding:10px 12px;min-height:44px}
 .field .dot{flex:0 0 8px;height:8px;border-radius:50%;background:var(--dim)}
 .field.live .dot{background:var(--green)}
@@ -274,36 +360,63 @@ button.mute.on:hover{background:var(--red-hi)}
 .krow button.space{flex:4 1 0}
 .krow button.mod.on{background:var(--text);color:var(--bg)}
 .krow.home{padding:0 5%}
-.hint{font-size:12px;color:var(--dim);margin:8px 2px 0;line-height:1.45}
-#theme{position:fixed;top:14px;right:14px;flex:none;width:36px;height:36px;padding:0;border-radius:50%;color:var(--dim)}
-#theme:hover{color:var(--text)}
-#theme svg{width:18px;height:18px}
-@media (max-width:900px){#keyboard{grid-column:1/-1;grid-row:2;justify-self:center;max-width:340px;padding-right:0;margin-top:24px}}
+.hint-k{font-size:12px;color:var(--dim);margin:8px 2px 0;line-height:1.45}
+@media (max-width:900px){#keyboard{grid-column:2;grid-row:2;justify-self:center;max-width:340px;padding-right:0;margin-top:16px}}
+@media (prefers-reduced-motion:reduce){button:active{transform:none}#flash{transition:none}}
 </style></head><body>
-<button id="theme" aria-label="Switch to light mode"></button>
 <div class="app">
 <section id="keyboard" hidden aria-label="Keyboard">
  <div class="field idle" id="field"><span class="dot"></span><span id="typed"></span></div>
  <div class="keys" id="keys"></div>
- <p class="hint">Typing goes into the text field open on the TV. Arrows still move on the TV,
+ <p class="hint-k">Typing goes into the text field open on the TV. Arrows still move on the TV,
  Enter presses OK, Esc is Back.</p>
 </section>
 <main>
-<div class="row"><button class="round power" data-k="power" aria-label="Power"><svg viewBox="0 0 24 24"><path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77.04"/></svg></button><button data-k="home">Home</button><button data-k="settings">Settings</button><button class="round kbd" id="kbd" aria-label="Keyboard" aria-pressed="false"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M6 13h.01M18 13h.01M10 13h4M7 16h10"/></svg></button></div>
-<div class="pad">
- <span></span><button data-k="up" aria-label="Up">&#9650;</button><span></span>
- <button data-k="left" aria-label="Left">&#9664;</button><button class="ok" data-k="ok">OK</button><button data-k="right" aria-label="Right">&#9654;</button>
- <span></span><button data-k="down" aria-label="Down">&#9660;</button><span></span>
+<div class="top">
+ <div id="tvstate"><span class="dot"></span><span id="tvword">TV</span></div>
+ <button class="round" id="theme" aria-label="Switch to light mode"></button>
+ <button class="round" data-k="settings" aria-label="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+ <button class="round power" id="power" aria-label="Power"><svg viewBox="0 0 24 24"><path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77.04"/></svg></button>
 </div>
-<div class="row"><button data-k="back">Back</button></div>
-<div class="row"><button data-k="voldown" aria-label="Volume down">Vol &minus;</button><button class="mute" data-k="mute" aria-label="Mute"></button><button data-k="volup" aria-label="Volume up">Vol +</button></div>
-<h2>Apps</h2><div id="apps"><span class="note">Loading&hellip;</span></div>
-<h2>Inputs</h2><div id="inputs"><span style="color:var(--dim)">Loading&hellip;</span></div>
+<div id="onview">
+ <div id="touch" tabindex="0" aria-label="Touchpad: swipe to move, tap for OK">
+  <canvas id="trace"></canvas>
+  <button class="swap" id="toRing">Buttons</button>
+  <div id="flash"></div>
+  <div class="hint">Swipe to move &middot; tap for OK</div>
+ </div>
+ <div id="ring" hidden>
+  <button class="swap" id="toTouch">Touchpad</button>
+  <div class="pad">
+   <span></span><button data-k="up" aria-label="Up">&#9650;</button><span></span>
+   <button data-k="left" aria-label="Left">&#9664;</button><button class="ok" data-k="ok">OK</button><button data-k="right" aria-label="Right">&#9654;</button>
+   <span></span><button data-k="down" aria-label="Down">&#9660;</button><span></span>
+  </div>
+ </div>
+</div>
+<div id="offview" hidden>
+ <button id="wake" aria-label="Turn the TV on"><svg viewBox="0 0 24 24"><path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77.04"/></svg></button>
+ <p>The TV is off. Press power, or pick an app or input below to turn it on and go straight there.</p>
+</div>
+<div id="vol" tabindex="0" aria-label="Volume: drag left or right">
+ <button class="mute" data-k="mute" aria-label="Mute"></button>
+ <div class="track"><div id="fill"></div></div>
+ <span class="num" id="num">&middot;</span>
+</div>
+<h2>Watch</h2>
+<div id="watch"><span class="note">Loading&hellip;</span></div>
+<div class="thumb" id="thumb">
+ <button data-k="back"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg>Back</button>
+ <button data-k="home"><svg viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Home</button>
+ <button class="play" id="play" aria-label="Play or pause"><svg viewBox="0 0 24 24"><path d="M4 5v14l8-7z"/><path d="M16 5v14"/><path d="M20 5v14"/></svg>Play/Pause</button>
+ <button class="kbd" id="kbd" aria-label="Keyboard" aria-pressed="false"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M6 13h.01M18 13h.01M10 13h4M7 16h10"/></svg>Type</button>
+</div>
 <div id="status"></div>
 </main></div><script>
+const $ = id => document.getElementById(id);
 const SUN = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>';
 const MOON = '<svg viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>';
-const themeBtn = document.getElementById("theme");
+const themeBtn = $("theme");
 function showTheme(t) {
   document.documentElement.dataset.theme = t;
   themeBtn.innerHTML = t === "dark" ? SUN : MOON;
@@ -321,8 +434,9 @@ matchMedia("(prefers-color-scheme: light)").addEventListener("change", e => {
   try { chosen = localStorage.getItem("theme"); } catch (err) {}
   if (!chosen) showTheme(e.matches ? "light" : "dark");
 });
-const status = document.getElementById("status");
+const status = $("status");
 function say(text, err) { status.textContent = text; status.className = err ? "err" : ""; }
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 async function post(path, body) {
   try {
     const r = await fetch(path, {method: "POST", headers: {"X-Remote": "1"}, body});
@@ -330,32 +444,197 @@ async function post(path, body) {
     return r.ok;
   } catch (e) { say("The remote stopped. Start it again in Terminal.", true); return false; }
 }
+// Key presses go to the TV one at a time and in order, so a fast swipe can't arrive shuffled.
+// A backlog is dropped rather than replayed long after the finger has stopped.
+const queue = []; let busy = false;
+function send(path) {
+  if (queue.length >= 6) return;
+  queue.push(path); if (!busy) drain();
+}
+async function drain() {
+  busy = true;
+  while (queue.length) await post(queue.shift());
+  busy = false;
+}
 const SOUND = '<svg viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>';
 const MUTED = '<svg viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="m22 9-6 6"/><path d="m16 9 6 6"/></svg>';
 const muteBtn = document.querySelector("button.mute");
 function showMute(on) {
   muteBtn.innerHTML = on ? MUTED : SOUND; muteBtn.classList.toggle("on", on);
   muteBtn.setAttribute("aria-label", on ? "Unmute" : "Mute");
+  $("vol").classList.toggle("muted", on);
 }
 let muted = false; showMute(false);
-// The TV's own answer wins; a TV that reports no mute state keeps the icon's own guess.
-async function syncMute() {
-  try { const r = await fetch("/state"); const s = await r.json(); if (s.muted !== null) showMute(muted = s.muted); } catch (e) {}
+
+// The TV's state: power, volume and mute, read when the page opens, every few seconds while it's in
+// view, and just after a change. The TV's own answer wins; what it doesn't report keeps the guess.
+let level = null, maxLevel = 100, tvOff = false, volTouched = 0, dragging = false;
+function showLevel() {
+  $("num").textContent = level === null ? "" : level;
+  $("fill").style.width = level === null ? "0" : Math.min(100, level / maxLevel * 100) + "%";
 }
-async function press(k) {
+function showPower(power) {
+  tvOff = power === "standby";
+  $("tvstate").classList.toggle("on", power === "active");
+  $("tvword").textContent = power === "active" ? "TV on" : tvOff ? "TV off" : "TV";
+  $("onview").hidden = tvOff; $("offview").hidden = !tvOff;
+  $("vol").hidden = tvOff; $("thumb").hidden = tvOff; $("power").hidden = tvOff;
+}
+async function syncState() {
+  try {
+    const s = await (await fetch("/state")).json();
+    if (s.muted !== null) showMute(muted = s.muted);
+    if (Number.isInteger(s.maxVolume) && s.maxVolume > 0) maxLevel = s.maxVolume;
+    if (Number.isInteger(s.volume) && !dragging && Date.now() - volTouched > 2000) { level = s.volume; showLevel(); }
+    showPower(s.power);
+  } catch (e) {}
+}
+syncState(); window.addEventListener("focus", syncState);
+setInterval(() => { if (!document.hidden) syncState(); }, 5000);
+
+function press(k) {
   if (k === "mute") showMute(muted = !muted);
-  await post("/key/" + k);
-  if (k === "mute" || k === "volup" || k === "voldown") setTimeout(syncMute, 400);
+  if (k === "home") nextPlay = "pause";
+  send("/key/" + k);
+  if (k === "mute" || k === "volup" || k === "voldown") setTimeout(syncState, 500);
   if (typing && ["up", "down", "left", "right", "ok", "back"].includes(k)) setTimeout(pollField, 500);
 }
-syncMute(); window.addEventListener("focus", syncMute);
 document.querySelectorAll("[data-k]").forEach(b => b.addEventListener("click", () => press(b.dataset.k)));
+
+// The TV takes Play and Pause as two keys, so the button sends them in turn: Pause first, since
+// you're usually watching when you reach for it. A tap that doesn't take, the next one fixes.
+let nextPlay = "pause";
+$("play").addEventListener("click", () => { press(nextPlay); nextPlay = nextPlay === "pause" ? "play" : "pause"; });
+
+// Power. Off, the page shrinks to the power button and the apps, and an app turns the TV on first.
+$("power").addEventListener("click", async () => {
+  await post("/key/power"); setTimeout(syncState, 1500); setTimeout(syncState, 4000);
+});
+$("wake").addEventListener("click", async () => {
+  if (await post("/power/on")) { showPower("active"); setTimeout(syncState, 3000); }
+});
+async function go(path) {
+  nextPlay = "pause";
+  if (!tvOff) return post(path);
+  say("Turning the TV on…");
+  if (!await post("/power/on")) return;
+  showPower("active");
+  await sleep(3000);
+  if (!await post(path)) { await sleep(2500); await post(path); }  // still waking up: once more
+  syncState();
+}
+
+// Touchpad: every STEP pixels of travel is one press, in the direction of the larger move; a short
+// touch that hardly moves is OK. A trail follows the finger and the step shows in the middle.
+const touch = $("touch"), cv = $("trace"), ctx = cv.getContext("2d"), flash = $("flash");
+const STEP = 40;
+const ARROWS = {up: '<path d="m6 15 6-6 6 6"/>', down: '<path d="m6 9 6 6 6-6"/>', left: '<path d="m15 6-6 6 6 6"/>',
+  right: '<path d="m9 6 6 6-6 6"/>', ok: '<circle cx="12" cy="12" r="6"/>'};
+let start = null, origin = null, lastDir = null, steps = 0, pts = [], fadeRaf = 0, flashTimer = 0;
+function showStep(k, n) {
+  flash.innerHTML = '<svg viewBox="0 0 24 24">' + ARROWS[k] + '</svg><span></span>';
+  flash.lastChild.textContent = (k === "ok" ? "OK" : k[0].toUpperCase() + k.slice(1)) + (n > 1 ? " ×" + n : "");
+  flash.classList.add("show"); clearTimeout(flashTimer);
+  flashTimer = setTimeout(() => flash.classList.remove("show"), 150);
+  if (navigator.vibrate) navigator.vibrate(8);
+}
+function step(k, n) { showStep(k, n); press(k); }
+function sizeCanvas() {
+  const r = touch.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+  cv.width = r.width * d; cv.height = r.height * d; ctx.setTransform(d, 0, 0, d, 0, 0);
+}
+function draw(alpha) {
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--text");
+  ctx.lineCap = "round";
+  for (let i = 1; i < pts.length; i++) {
+    ctx.globalAlpha = alpha * (i / pts.length) * 0.5; ctx.lineWidth = 2 + 6 * (i / pts.length);
+    ctx.beginPath(); ctx.moveTo(pts[i - 1].x, pts[i - 1].y); ctx.lineTo(pts[i].x, pts[i].y); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+function at(e) { const r = touch.getBoundingClientRect(); return {x: e.clientX - r.left, y: e.clientY - r.top}; }
+touch.addEventListener("pointerdown", e => {
+  if (e.target.closest(".swap")) return;
+  sizeCanvas(); cancelAnimationFrame(fadeRaf);
+  touch.setPointerCapture(e.pointerId);
+  const p = at(e);
+  start = {x: p.x, y: p.y, t: performance.now()}; origin = p; lastDir = null; steps = 0; pts = [p];
+});
+touch.addEventListener("pointermove", e => {
+  if (!start) return;
+  const p = at(e); pts.push(p); if (pts.length > 40) pts.shift(); draw(1);
+  const dx = p.x - origin.x, dy = p.y - origin.y;
+  if (Math.max(Math.abs(dx), Math.abs(dy)) < STEP) return;
+  const k = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up");
+  steps = k === lastDir ? steps + 1 : 1; lastDir = k; origin = p;
+  step(k, steps);
+});
+function lift(e) {
+  if (!start) return;
+  const p = at(e);
+  if (!lastDir && Math.hypot(p.x - start.x, p.y - start.y) < 12 && performance.now() - start.t < 400) step("ok", 1);
+  start = null;
+  let a = 1; (function fade() { a -= 0.06; draw(Math.max(a, 0)); if (a > 0) fadeRaf = requestAnimationFrame(fade); })();
+}
+touch.addEventListener("pointerup", lift);
+touch.addEventListener("pointercancel", lift);
+
+// Touchpad or arrow buttons, remembered on this phone.
+function usePad(ring) {
+  $("touch").hidden = ring; $("ring").hidden = !ring;
+  try { localStorage.setItem("pad", ring ? "buttons" : "touch"); } catch (e) {}
+}
+let padPref = null; try { padPref = localStorage.getItem("pad"); } catch (e) {}
+usePad(padPref === "buttons");
+$("toRing").addEventListener("click", () => usePad(true));
+$("toTouch").addEventListener("click", () => usePad(false));
+
+// Volume strip: drag sets the TV's level directly, one step every VSTEP pixels from where the finger
+// started, sending only the newest level while one is on its way. A TV that doesn't report its
+// level gets Volume up and down presses instead.
+const vol = $("vol"), VSTEP = 12;
+let vx = 0, vBase = 0, vDone = 0, want = null, sentLevel = null, vSending = false;
+async function sendLevel() {
+  if (vSending) return; vSending = true;
+  while (want !== null && want !== sentLevel) {
+    const v = want;
+    if (!await post("/volume", JSON.stringify({level: v}))) break;
+    sentLevel = v;
+  }
+  vSending = false;
+}
+function setLevel(v) {
+  v = Math.max(0, Math.min(maxLevel, v));
+  if (v === level) return;
+  level = v; showLevel(); volTouched = Date.now();
+  if (muted) showMute(muted = false);  // the TV unmutes when its volume changes
+  want = v; sendLevel();
+}
+vol.addEventListener("pointerdown", e => {
+  if (e.target.closest("button")) return;
+  vol.setPointerCapture(e.pointerId); dragging = true; vx = e.clientX; vBase = level; vDone = 0;
+});
+vol.addEventListener("pointermove", e => {
+  if (!dragging) return;
+  const n = Math.trunc((e.clientX - vx) / VSTEP);
+  if (n === vDone) return;
+  if (vBase === null) { for (; vDone < n; vDone++) press("volup"); for (; vDone > n; vDone--) press("voldown"); return; }
+  vDone = n; setLevel(vBase + n);
+});
+["pointerup", "pointercancel"].forEach(t => vol.addEventListener(t, () => { dragging = false; volTouched = Date.now(); }));
+function volStep(d) { if (level === null) press(d > 0 ? "volup" : "voldown"); else setLevel(level + d); }
+vol.addEventListener("keydown", e => {
+  if (typing) return;
+  const d = {ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1}[e.key];
+  if (d) { e.preventDefault(); e.stopPropagation(); volStep(d); }
+});
 
 // Keyboard mode. The TV's field is the truth: while nothing is typed, the page reads it about once a
 // second (getTextForm), which is also how it notices that a search or text field has opened.
 // Each keystroke sends the whole text (setTextForm replaces the field), one request at a time.
-const kbd = document.getElementById("kbd"), panel = document.getElementById("keyboard");
-const field = document.getElementById("field"), typed = document.getElementById("typed");
+const kbd = $("kbd"), panel = $("keyboard");
+const field = $("field"), typed = $("typed");
 let typing = false, text = "", live = null, lastKey = 0, sending = false, sent = null, pollTimer = null;
 function render() {
   field.classList.toggle("live", live === true); field.classList.toggle("idle", live !== true);
@@ -391,7 +670,10 @@ function erase() { text = Array.from(text).slice(0, -1).join(""); lastKey = Date
 function setTyping(on) {
   typing = on; panel.hidden = !on; kbd.classList.toggle("on", on); kbd.setAttribute("aria-pressed", on);
   clearInterval(pollTimer);
-  if (on) { live = null; render(); pollField(); pollTimer = setInterval(pollField, 1000); }
+  if (on) {
+    live = null; render(); pollField(); pollTimer = setInterval(pollField, 1000);
+    if (matchMedia("(max-width:900px)").matches) panel.scrollIntoView({behavior: "smooth", block: "nearest"});
+  }
 }
 kbd.addEventListener("click", () => setTyping(!typing));
 
@@ -402,7 +684,7 @@ const LAYOUTS = {
 };
 const LABELS = {shift: "⇧", del: "⌫", space: "space", "return": "return"};
 let layout = "abc", shift = false;
-const keysBox = document.getElementById("keys");
+const keysBox = $("keys");
 function drawKeys() {
   keysBox.innerHTML = "";
   LAYOUTS[layout].forEach((row, i) => {
@@ -442,45 +724,51 @@ document.addEventListener("keydown", e => {
     if (e.key.length === 1) { e.preventDefault(); return type(e.key); }
     return;
   }
+  if (e.key === "p" || e.key === "P") { e.preventDefault(); return $("play").click(); }
+  // Enter and Space on a focused button press that button, not OK.
+  if ((e.key === "Enter" || e.key === " ") && e.target.closest("button")) return;
   const k = keys[e.key] || keys[e.key.toLowerCase()];
   if (!k) return;
-  e.preventDefault(); press(k);
+  e.preventDefault();
+  if (["up", "down", "left", "right", "ok"].includes(k)) step(k, 1); else press(k);
 });
 document.addEventListener("paste", e => {
   if (!typing) return;
   e.preventDefault(); type((e.clipboardData.getData("text") || "").replace(/\\s+/g, " "));
 });
-// Background and text colour per app, by its name on the TV (lower case).
+
+// Apps first, then inputs, in one block near the thumb. Background and text colour per app, by its
+// name on the TV (lower case).
 const BRANDS = {"youtube": ["#ff0000", "#ffffff"], "pluto tv": ["#ffe500", "#000000"]};
-fetch("/apps").then(async r => {
-  const box = document.getElementById("apps");
-  if (!r.ok) { box.innerHTML = '<span class="note"></span>'; box.firstChild.textContent = await r.text(); return; }
-  const list = await r.json();
-  box.innerHTML = list.length ? "" : '<span class="note">None of your apps were found on the TV.</span>';
-  for (const a of list) {
+const watch = $("watch");
+function note(msg) { const n = document.createElement("span"); n.className = "note"; n.textContent = msg; return n; }
+async function list(path) {
+  try { const r = await fetch(path); return r.ok ? {items: await r.json()} : {error: await r.text()}; }
+  catch (e) { return {error: "The remote stopped. Start it again in Terminal."}; }
+}
+Promise.all([list("/apps"), list("/inputs")]).then(([apps, inputs]) => {
+  watch.innerHTML = "";
+  for (const a of apps.items || []) {
     const b = document.createElement("button");
-    b.textContent = a.name;
+    b.textContent = a.name; b.title = a.name;
     const brand = BRANDS[a.name.toLowerCase()];
     if (brand) {
       b.classList.add("brand");
       b.style.setProperty("--brand-bg", brand[0]); b.style.setProperty("--brand-fg", brand[1]);
     }
-    b.addEventListener("click", () => post("/app?uri=" + encodeURIComponent(a.uri)));
-    box.appendChild(b);
+    b.addEventListener("click", () => go("/app?uri=" + encodeURIComponent(a.uri)));
+    watch.appendChild(b);
   }
-}).catch(() => {});
-fetch("/inputs").then(async r => {
-  const box = document.getElementById("inputs");
-  if (!r.ok) { box.textContent = ""; say(await r.text(), true); return; }
-  const list = await r.json();
-  box.textContent = list.length ? "" : "No inputs reported.";
-  for (const i of list) {
+  for (const i of inputs.items || []) {
     const b = document.createElement("button");
-    b.textContent = i.name; if (!i.connected) b.className = "off";
-    b.addEventListener("click", () => post("/input?uri=" + encodeURIComponent(i.uri)));
-    box.appendChild(b);
+    b.textContent = i.name; b.title = i.name; b.className = "input" + (i.connected ? "" : " off");
+    b.addEventListener("click", () => go("/input?uri=" + encodeURIComponent(i.uri)));
+    watch.appendChild(b);
   }
-}).catch(() => say("The remote stopped. Start it again in Terminal.", true));
+  if (apps.items && !apps.items.length) watch.appendChild(note("None of your apps were found on the TV."));
+  if (apps.error) watch.appendChild(note(apps.error));
+  if (inputs.error) say(inputs.error, true);
+});
 </script></body></html>
 """
 
@@ -543,9 +831,12 @@ def make_handler(tv, lan, apps=DEFAULT_APPS):
                 return self.reply(200, json.dumps({"active": active, "text": text}), "application/json")
             if self.path == "/state":
                 try:
-                    return self.reply(200, json.dumps({"muted": tv.muted()}), "application/json")
+                    sound = tv.sound()
                 except Exception:
-                    return self.reply(200, json.dumps({"muted": None}), "application/json")
+                    sound = {"muted": None, "volume": None, "maxVolume": None}
+                state = {"muted": sound["muted"], "volume": sound["volume"], "maxVolume": sound["maxVolume"],
+                         "power": tv.power_state()}
+                return self.reply(200, json.dumps(state), "application/json")
             if self.path in ICONS:
                 return self.reply(200, icon(self.path), "image/png", "max-age=86400")
             if self.path == "/health":
@@ -574,6 +865,16 @@ def make_handler(tv, lan, apps=DEFAULT_APPS):
             try:
                 if self.path == "/key/power":
                     tv.power()
+                elif self.path == "/power/on":
+                    tv.power_on()
+                elif self.path == "/volume":
+                    length = int(self.headers.get("Content-Length") or 0)
+                    if length > 256:
+                        return self.reply(413, "Too long")
+                    level = json.loads(self.rfile.read(length) or b"{}").get("level")
+                    if not isinstance(level, int) or isinstance(level, bool):
+                        return self.reply(400, "Expected {\"level\": a whole number}")
+                    tv.set_volume(level)
                 elif self.path.startswith("/key/") and self.path[5:] in BUTTONS:
                     tv.press(self.path[5:])
                 elif self.path == "/text":

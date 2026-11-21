@@ -37,6 +37,7 @@ class FakeTv(BaseHTTPRequestHandler):
     sent = []
     power = "active"
     mute = False
+    volume = 12
     field = None  # text in the TV's open keyboard field; None when no field is open
 
     def log_message(self, *args):
@@ -85,7 +86,13 @@ class FakeTv(BaseHTTPRequestHandler):
             else:
                 result = [{"text": FakeTv.field}]
         elif call["method"] == "getVolumeInformation":
-            result = [[{"target": "speaker", "volume": 12, "mute": FakeTv.mute}]]
+            result = [[{"target": "headphone", "volume": 3, "mute": False, "maxVolume": 100, "minVolume": 0},
+                       {"target": "speaker", "volume": FakeTv.volume, "mute": FakeTv.mute,
+                        "maxVolume": 50, "minVolume": 0}]]
+        elif call["method"] == "setAudioVolume":
+            self.sent.append(call["params"][0])
+            FakeTv.volume = int(call["params"][0]["volume"])
+            result = [0]
         else:
             return self.answer(200, json.dumps({"error": [12, "No Such Method"], "id": 1}).encode())
         self.answer(200, json.dumps({"result": result, "id": 1}).encode())
@@ -98,7 +105,7 @@ def serve(server):
 
 class SonyRemoteTest(unittest.TestCase):
     def setUp(self):
-        FakeTv.sent, FakeTv.power, FakeTv.mute, FakeTv.field = [], "active", False, None
+        FakeTv.sent, FakeTv.power, FakeTv.mute, FakeTv.field, FakeTv.volume = [], "active", False, None, 12
         self.tv_server = serve(ThreadingHTTPServer(("127.0.0.1", 0), FakeTv))
         self.tv = remote.Tv(f"127.0.0.1:{self.tv_server.server_address[1]}", PSK)
         self.page = serve(ThreadingHTTPServer(("127.0.0.1", 0),
@@ -134,7 +141,10 @@ class SonyRemoteTest(unittest.TestCase):
         self.assertNotIn("Copy and paste", body)
         self.assertIn("html,button{touch-action:manipulation}", body)  # no double-tap zoom on iOS
         self.assertIn('"youtube": ["#ff0000", "#ffffff"], "pluto tv": ["#ffe500", "#000000"]', body)
-        self.assertLess(body.index("<h2>Apps</h2>"), body.index("<h2>Inputs</h2>"))  # apps first
+        self.assertLess(body.index('list("/apps"), list("/inputs")'), body.index("for (const i of inputs"))  # apps first
+        # One hand: the touchpad above the volume strip, the apps and inputs, then the thumb row.
+        order = [body.index(m) for m in ('id="touch"', 'id="vol"', 'id="watch"', 'id="thumb"')]
+        self.assertEqual(order, sorted(order))
         self.assertNotIn("Distinct-Key-7Q", body)  # the page never shows the key
 
     def test_icons(self):
@@ -156,10 +166,41 @@ class SonyRemoteTest(unittest.TestCase):
         self.assertEqual(self.press("/key/power")[0], 204)
         self.assertEqual(FakeTv.power, "active")
 
-    def test_mute_state(self):
-        self.assertEqual(json.loads(self.request("/state")[1]), {"muted": False})
-        FakeTv.mute = True
-        self.assertEqual(json.loads(self.request("/state")[1]), {"muted": True})
+    def test_state(self):
+        # The speaker's volume and limit, not the headphones' listed before it.
+        self.assertEqual(json.loads(self.request("/state")[1]),
+                         {"muted": False, "volume": 12, "maxVolume": 50, "power": "active"})
+        FakeTv.mute, FakeTv.power = True, "standby"
+        state = json.loads(self.request("/state")[1])
+        self.assertEqual((state["muted"], state["power"]), (True, "standby"))
+
+    def test_state_when_the_tv_is_gone(self):
+        self.tv.psk = "1234"
+        self.assertEqual(json.loads(self.request("/state")[1]),
+                         {"muted": None, "volume": None, "maxVolume": None, "power": None})
+
+    def test_volume_level(self):
+        self.assertEqual(self.press("/volume", b'{"level": 20}')[0], 204)
+        self.assertEqual(FakeTv.sent, [{"target": "speaker", "volume": "20"}])
+        self.assertEqual(self.press("/volume", b'{"level": 90}')[0], 204)  # held to the TV's maximum
+        self.assertEqual(FakeTv.volume, 50)
+        self.assertEqual(self.press("/volume", b'{"level": -4}')[0], 204)
+        self.assertEqual(FakeTv.volume, 0)
+        for bad in (b'{"level": "20"}', b'{"level": 2.5}', b'{"level": true}', b'{}'):
+            self.assertEqual(self.press("/volume", bad)[0], 400)
+        self.assertEqual(self.press("/volume", b'{"level": 1' + b" " * 300 + b"}")[0], 413)
+
+    def test_power_on_never_turns_it_off(self):
+        self.assertEqual(self.press("/power/on")[0], 204)
+        self.assertEqual(FakeTv.power, "active")
+        FakeTv.power = "standby"
+        self.assertEqual(self.press("/power/on")[0], 204)
+        self.assertEqual(FakeTv.power, "active")
+
+    def test_play_and_pause(self):
+        self.assertEqual(self.press("/key/pause")[0], 204)
+        self.assertEqual(self.press("/key/play")[0], 204)
+        self.assertEqual(FakeTv.sent, [remote.FALLBACK_CODES["Pause"], remote.FALLBACK_CODES["Play"]])
 
     def test_keys_use_the_tvs_codes_then_the_fallback(self):
         self.assertEqual(self.press("/key/settings")[0], 204)
