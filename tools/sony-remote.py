@@ -9,8 +9,8 @@ On the TV, once: Settings > Network & Internet > Home network > IP control. Set 
     ... python3 tools/sony-remote.py --port 9000 --no-browser
     ... python3 tools/sony-remote.py --make-app                             Mac: ~/Applications/TV Remote.app
 
-The page is laid out for one hand on a phone: a touchpad (each short swipe is one arrow press, a tap is
-OK, with a Buttons switch back to the arrow ring), a volume strip you drag to set the TV's level, then
+The page is laid out for one hand on a phone: a touchpad (each swipe is one arrow press however far it
+goes, a tap is OK, with a Buttons switch back to the arrow ring), a volume strip you drag to set the TV's level, then
 the apps and inputs and Back, Home, Play/Pause and Type at the bottom. When the TV is in standby the
 page shows only power and the apps and inputs, and choosing one turns the TV on first.
 
@@ -290,7 +290,7 @@ button.power:hover{background:var(--red-hi)}
 #theme{color:var(--dim)}
 #theme:hover{color:var(--text)}
 #theme svg{width:18px;height:18px}
-/* Touchpad: each short swipe is one step on the TV, a tap is OK. */
+/* Touchpad: each swipe is one step on the TV, a tap is OK. */
 #touch{position:relative;height:clamp(200px,40vh,320px);border-radius:24px;overflow:hidden;touch-action:none;
  cursor:crosshair;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;
  background:radial-gradient(circle at 50% 45%,var(--pad-a),var(--pad-b));border:1px solid var(--line)}
@@ -524,21 +524,22 @@ async function go(path) {
   syncState();
 }
 
-// Touchpad: every STEP pixels of travel is one press, in the direction of the larger move; a short
-// touch that hardly moves is OK. A trail follows the finger and the step shows in the middle.
+// Touchpad: a swipe is one press, sent once the finger has travelled STEP pixels, in the direction of
+// the larger move; the rest of that swipe does nothing, so a long or fast swipe can't skip two or three
+// items. A short touch that hardly moves is OK. A trail follows the finger and the step shows in the middle.
 const touch = $("touch"), cv = $("trace"), ctx = cv.getContext("2d"), flash = $("flash");
 const STEP = 40;
 const ARROWS = {up: '<path d="m6 15 6-6 6 6"/>', down: '<path d="m6 9 6 6 6-6"/>', left: '<path d="m15 6-6 6 6 6"/>',
   right: '<path d="m9 6 6 6-6 6"/>', ok: '<circle cx="12" cy="12" r="6"/>'};
-let start = null, origin = null, lastDir = null, steps = 0, pts = [], fadeRaf = 0, flashTimer = 0;
-function showStep(k, n) {
+let start = null, lastDir = null, pts = [], fadeRaf = 0, flashTimer = 0;
+function showStep(k) {
   flash.innerHTML = '<svg viewBox="0 0 24 24">' + ARROWS[k] + '</svg><span></span>';
-  flash.lastChild.textContent = (k === "ok" ? "OK" : k[0].toUpperCase() + k.slice(1)) + (n > 1 ? " ×" + n : "");
+  flash.lastChild.textContent = k === "ok" ? "OK" : k[0].toUpperCase() + k.slice(1);
   flash.classList.add("show"); clearTimeout(flashTimer);
   flashTimer = setTimeout(() => flash.classList.remove("show"), 150);
   if (navigator.vibrate) navigator.vibrate(8);
 }
-function step(k, n) { showStep(k, n); press(k); }
+function step(k) { showStep(k); press(k); }
 function sizeCanvas() {
   const r = touch.getBoundingClientRect(), d = window.devicePixelRatio || 1;
   cv.width = r.width * d; cv.height = r.height * d; ctx.setTransform(d, 0, 0, d, 0, 0);
@@ -559,21 +560,21 @@ touch.addEventListener("pointerdown", e => {
   sizeCanvas(); cancelAnimationFrame(fadeRaf);
   touch.setPointerCapture(e.pointerId);
   const p = at(e);
-  start = {x: p.x, y: p.y, t: performance.now()}; origin = p; lastDir = null; steps = 0; pts = [p];
+  start = {x: p.x, y: p.y, t: performance.now()}; lastDir = null; pts = [p];
 });
 touch.addEventListener("pointermove", e => {
   if (!start) return;
   const p = at(e); pts.push(p); if (pts.length > 40) pts.shift(); draw(1);
-  const dx = p.x - origin.x, dy = p.y - origin.y;
+  if (lastDir) return;
+  const dx = p.x - start.x, dy = p.y - start.y;
   if (Math.max(Math.abs(dx), Math.abs(dy)) < STEP) return;
-  const k = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up");
-  steps = k === lastDir ? steps + 1 : 1; lastDir = k; origin = p;
-  step(k, steps);
+  lastDir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up");
+  step(lastDir);
 });
 function lift(e) {
   if (!start) return;
   const p = at(e);
-  if (!lastDir && Math.hypot(p.x - start.x, p.y - start.y) < 12 && performance.now() - start.t < 400) step("ok", 1);
+  if (!lastDir && Math.hypot(p.x - start.x, p.y - start.y) < 12 && performance.now() - start.t < 400) step("ok");
   start = null;
   let a = 1; (function fade() { a -= 0.06; draw(Math.max(a, 0)); if (a > 0) fadeRaf = requestAnimationFrame(fade); })();
 }
@@ -730,7 +731,7 @@ document.addEventListener("keydown", e => {
   const k = keys[e.key] || keys[e.key.toLowerCase()];
   if (!k) return;
   e.preventDefault();
-  if (["up", "down", "left", "right", "ok"].includes(k)) step(k, 1); else press(k);
+  if (["up", "down", "left", "right", "ok"].includes(k)) step(k); else press(k);
 });
 document.addEventListener("paste", e => {
   if (!typing) return;
