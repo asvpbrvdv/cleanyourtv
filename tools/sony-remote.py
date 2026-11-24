@@ -10,9 +10,10 @@ On the TV, once: Settings > Network & Internet > Home network > IP control. Set 
     ... python3 tools/sony-remote.py --make-app                             Mac: ~/Applications/TV Remote.app
 
 The page is laid out for one hand on a phone: a touchpad (each swipe is one arrow press however far it
-goes, a tap is OK, with a Buttons switch back to the arrow ring), a volume strip you drag to set the TV's level, then
-the apps and inputs and Back, Home, Play/Pause and Type at the bottom. When the TV is in standby the
-page shows only power and the apps and inputs, and choosing one turns the TV on first.
+goes, holding the finger at the edge after a swipe keeps going, a tap is OK, with a Buttons switch back
+to the arrow ring), a volume strip you drag to set the TV's level, then the apps and inputs and Back,
+Home, Play/Pause and Type at the bottom. When the TV is in standby the page shows only power and the
+apps and inputs, and choosing one turns the TV on first.
 
 Keys: arrows, Enter = OK, Esc or Backspace = Back, H = Home, S = Settings, + / - = volume, M = mute,
 P = play/pause.
@@ -383,7 +384,7 @@ button.kbd.on{box-shadow:inset 0 0 0 2px var(--text)}
   <canvas id="trace"></canvas>
   <button class="swap" id="toRing">Buttons</button>
   <div id="flash"></div>
-  <div class="hint">Swipe to move &middot; tap for OK</div>
+  <div class="hint">Swipe to move &middot; hold at the edge to keep going &middot; tap for OK</div>
  </div>
  <div id="ring" hidden>
   <button class="swap" id="toTouch">Touchpad</button>
@@ -526,20 +527,28 @@ async function go(path) {
 
 // Touchpad: a swipe is one press, sent once the finger has travelled STEP pixels, in the direction of
 // the larger move; the rest of that swipe does nothing, so a long or fast swipe can't skip two or three
-// items. A short touch that hardly moves is OK. A trail follows the finger and the step shows in the middle.
+// items. To keep going, swipe to the edge of the pad and hold the finger there: after HOLD ms it repeats
+// every REPEAT ms until the finger lifts or leaves the edge. A short touch that hardly moves is OK.
+// A trail follows the finger and the step shows in the middle.
 const touch = $("touch"), cv = $("trace"), ctx = cv.getContext("2d"), flash = $("flash");
-const STEP = 40;
+const STEP = 40, EDGE = 48, HOLD = 400, REPEAT = 160;
 const ARROWS = {up: '<path d="m6 15 6-6 6 6"/>', down: '<path d="m6 9 6 6 6-6"/>', left: '<path d="m15 6-6 6 6 6"/>',
   right: '<path d="m9 6 6 6-6 6"/>', ok: '<circle cx="12" cy="12" r="6"/>'};
-let start = null, lastDir = null, pts = [], fadeRaf = 0, flashTimer = 0;
-function showStep(k) {
+let start = null, lastDir = null, steps = 0, pts = [], fadeRaf = 0, flashTimer = 0, holdTimer = 0, repeatTimer = 0;
+function showStep(k, n) {
   flash.innerHTML = '<svg viewBox="0 0 24 24">' + ARROWS[k] + '</svg><span></span>';
-  flash.lastChild.textContent = k === "ok" ? "OK" : k[0].toUpperCase() + k.slice(1);
+  flash.lastChild.textContent = (k === "ok" ? "OK" : k[0].toUpperCase() + k.slice(1)) + (n > 1 ? " ×" + n : "");
   flash.classList.add("show"); clearTimeout(flashTimer);
   flashTimer = setTimeout(() => flash.classList.remove("show"), 150);
   if (navigator.vibrate) navigator.vibrate(8);
 }
-function step(k) { showStep(k); press(k); }
+function step(k, n) { showStep(k, n); press(k); }
+// Within EDGE pixels of the pad's side the swipe was heading for.
+function atEdge(p, k) {
+  const r = touch.getBoundingClientRect();
+  return k === "right" ? p.x > r.width - EDGE : k === "left" ? p.x < EDGE : k === "down" ? p.y > r.height - EDGE : p.y < EDGE;
+}
+function stopRepeat() { clearTimeout(holdTimer); clearInterval(repeatTimer); holdTimer = repeatTimer = 0; }
 function sizeCanvas() {
   const r = touch.getBoundingClientRect(), d = window.devicePixelRatio || 1;
   cv.width = r.width * d; cv.height = r.height * d; ctx.setTransform(d, 0, 0, d, 0, 0);
@@ -558,24 +567,29 @@ function at(e) { const r = touch.getBoundingClientRect(); return {x: e.clientX -
 touch.addEventListener("pointerdown", e => {
   if (e.target.closest(".swap")) return;
   sizeCanvas(); cancelAnimationFrame(fadeRaf);
-  touch.setPointerCapture(e.pointerId);
+  touch.setPointerCapture(e.pointerId); stopRepeat();
   const p = at(e);
   start = {x: p.x, y: p.y, t: performance.now()}; lastDir = null; pts = [p];
 });
 touch.addEventListener("pointermove", e => {
   if (!start) return;
   const p = at(e); pts.push(p); if (pts.length > 40) pts.shift(); draw(1);
-  if (lastDir) return;
-  const dx = p.x - start.x, dy = p.y - start.y;
-  if (Math.max(Math.abs(dx), Math.abs(dy)) < STEP) return;
-  lastDir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up");
-  step(lastDir);
+  if (!lastDir) {
+    const dx = p.x - start.x, dy = p.y - start.y;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < STEP) return;
+    lastDir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up");
+    steps = 1; step(lastDir, 1);
+  }
+  if (!atEdge(p, lastDir)) stopRepeat();
+  else if (!holdTimer && !repeatTimer) holdTimer = setTimeout(() => {
+    holdTimer = 0; repeatTimer = setInterval(() => step(lastDir, ++steps), REPEAT);
+  }, HOLD);
 });
 function lift(e) {
   if (!start) return;
   const p = at(e);
   if (!lastDir && Math.hypot(p.x - start.x, p.y - start.y) < 12 && performance.now() - start.t < 400) step("ok");
-  start = null;
+  stopRepeat(); start = null;
   let a = 1; (function fade() { a -= 0.06; draw(Math.max(a, 0)); if (a > 0) fadeRaf = requestAnimationFrame(fade); })();
 }
 touch.addEventListener("pointerup", lift);
